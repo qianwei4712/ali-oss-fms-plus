@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { ArrowLeft, Save, Trash2, Moon, Sun, Eye } from 'lucide-react';
 import { fileCacheStore, downloadedTxtStore } from '@/utils/storage';
 
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 const Settings = () => {
   const navigate = useNavigate();
   const { ossConfig, theme, setOssConfig, setTheme, clearConfig } = useConfigStore();
@@ -23,6 +25,7 @@ const Settings = () => {
   });
   
   const [isLoading, setIsLoading] = useState(false);
+  const [showCorsHelp, setShowCorsHelp] = useState(false);
 
   useEffect(() => {
     if (ossConfig) {
@@ -59,7 +62,14 @@ const Settings = () => {
       setTimeout(() => navigate('/'), 1000);
     } catch (error: any) {
       console.error(error);
-      toast.error('Connection failed: ' + error.message);
+      // Detect CORS or Network Error
+      // ali-oss usually returns status: -1 or 0 for network/CORS errors, or name: 'RequestError'
+      if (error.name === 'RequestError' || error.status === 0 || error.status === -1 || error.message.includes('Network Error') || error.message.includes('CORS')) {
+         setShowCorsHelp(true);
+         toast.error('Connection failed: Potential CORS issue');
+      } else {
+         toast.error('Connection failed: ' + error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -200,6 +210,33 @@ const Settings = () => {
           )}
         </CardContent>
       </Card>
+      <Dialog open={showCorsHelp} onOpenChange={setShowCorsHelp}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>⚠️ CORS Configuration Required</DialogTitle>
+            <DialogDescription>
+              Aliyun OSS rejects browser requests by default. You must configure CORS rules in the OSS Console.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <ol className="list-decimal pl-4 space-y-2">
+              <li>Log in to <a href="https://oss.console.aliyun.com/" target="_blank" className="text-blue-500 underline">Aliyun OSS Console</a>.</li>
+              <li>Go to your Bucket: <strong>{formData.bucket || 'your-bucket'}</strong>.</li>
+              <li>Navigate to <strong>Content Security (数据安全)</strong> -&gt; <strong>Cross-Origin Resource Sharing (跨域设置)</strong>.</li>
+              <li>Click <strong>Create Rule</strong> and enter:
+                <ul className="list-disc pl-4 mt-1 space-y-1 bg-muted p-2 rounded">
+                  <li><strong>Allowed Origins (来源):</strong> <code className="bg-background px-1 rounded">*</code></li>
+                  <li><strong>Allowed Methods (允许 Methods):</strong> Select All (GET, PUT, DELETE, POST, HEAD)</li>
+                  <li><strong>Allowed Headers (允许 Headers):</strong> <code className="bg-background px-1 rounded">*</code></li>
+                  <li><strong>Exposed Headers (暴露 Headers):</strong> <code className="bg-background px-1 rounded">ETag</code></li>
+                </ul>
+              </li>
+              <li>Save and try again.</li>
+            </ol>
+          </div>
+          <Button onClick={() => setShowCorsHelp(false)}>I have configured it</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
