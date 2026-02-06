@@ -6,6 +6,8 @@ export interface OSSConfig {
   accessKeyId: string;
   accessKeySecret: string;
   secure?: boolean;
+  rootPath?: string;
+  recyclePath?: string;
 }
 
 export interface OSSObject {

@@ -58,29 +58,29 @@ export const useFileStore = create<FileState>((set, get) => ({
 
   fetchFiles: async (refresh = false) => {
     const { ossConfig } = useConfigStore.getState();
-    const { currentPath } = get();
+    let { currentPath } = get();
     
     if (!ossConfig) {
       set({ error: 'OSS configuration missing' });
       return;
     }
 
+    // Use rootPath if currentPath is empty
+    const rootPath = ossConfig.rootPath || '';
+    const effectivePath = currentPath || rootPath;
+
     set({ isLoading: true, error: null });
 
     try {
       // Check cache first if not refreshing
-      const cacheKey = `list_${currentPath}`;
+      const cacheKey = `list_${effectivePath}`;
       if (!refresh) {
          // TODO: Implement cache expiration logic
-         // For now, always fetch fresh from OSS to ensure consistency, 
-         // as cache might be stale. PRD emphasizes "Privacy" and "Mobile", 
-         // maybe cache is good for offline?
-         // Let's stick to live fetch for now, caching file *content* is more important.
       }
 
       const client = initOSSClient(ossConfig);
       const result = await client.list({
-        prefix: currentPath,
+        prefix: effectivePath,
         delimiter: '/',
         ['max-keys']: 100, // Pagination todo
       }, {});
@@ -91,7 +91,7 @@ export const useFileStore = create<FileState>((set, get) => ({
       if (result.prefixes) {
         result.prefixes.forEach((prefix: string) => {
           // Remove the current path from the name to get the display name
-          const name = prefix.replace(currentPath, '').replace(/\/$/, '');
+          const name = prefix.replace(effectivePath, '').replace(/\/$/, '');
           if (name) { // Avoid empty names
               objects.push({
                 name: name,
@@ -108,10 +108,10 @@ export const useFileStore = create<FileState>((set, get) => ({
       if (result.objects) {
         result.objects.forEach((obj) => {
           // Skip the folder object itself (if it exists as a 0-byte object)
-          if (obj.name === currentPath) return;
+          if (obj.name === effectivePath) return;
 
           objects.push({
-            name: obj.name.replace(currentPath, ''),
+            name: obj.name.replace(effectivePath, ''),
             url: obj.url,
             lastModified: obj.lastModified,
             size: obj.size,
@@ -132,17 +132,48 @@ export const useFileStore = create<FileState>((set, get) => ({
      const { ossConfig } = useConfigStore.getState();
      if (!ossConfig) return;
      
+     const rootPath = ossConfig.rootPath || '';
+     const recyclePath = ossConfig.recyclePath || 'trash/';
+
      set({ isLoading: true });
      try {
        const client = initOSSClient(ossConfig);
        
-       // "Move to Trash" logic: rename to trash/original_key
-       // OSS Copy then Delete
-       // For batch:
        for (const key of keys) {
-         const trashKey = `trash/${key}`;
+         // Determine destination key in recycle bin
+         let destinationKey = '';
+         
+         // If key starts with rootPath, replace it with recyclePath
+         if (rootPath && key.startsWith(rootPath)) {
+            destinationKey = key.replace(rootPath, recyclePath);
+         } else {
+            // Fallback: just prepend recyclePath or assume relative?
+            // If key is "some/file.txt" and rootPath is empty.
+            // recyclePath is "trash/".
+            // dest -> "trash/some/file.txt".
+            // If key is "normal/file.txt" and rootPath is "normal/".
+            // recyclePath is "recycle/".
+            // dest -> "recycle/file.txt".
+            destinationKey = recyclePath + key;
+         }
+
+         // Ensure destination ends with / if it's a folder (copy won't handle folder implicitly but OSS handles objects)
+         // But here we are deleting files (objects).
+         // If "key" is a folder prefix (OSS fake folder), we need to handle all children.
+         // Current deleteFiles implementation seems to assume "keys" are file objects or it deletes individual objects.
+         // If user selects a folder, "keys" might contain just the folder prefix? 
+         // The UI passes `currentPath + fileName`. If it's a folder, it ends with '/'.
+         // If it is a folder, we need to list all children and move them?
+         // The current implementation of deleteFiles:
+         // "Move to Trash" logic: rename to trash/original_key
+         // The original code was: `const trashKey = trash/${key};`
+         // It implies simple renaming.
+         
+         // Fix for path joining slashes
+         destinationKey = destinationKey.replace('//', '/');
+
          // Copy
-         await client.copy(trashKey, key);
+         await client.copy(destinationKey, key);
          // Delete
          await client.delete(key);
        }
@@ -160,9 +191,12 @@ export const useFileStore = create<FileState>((set, get) => ({
     const { currentPath } = get();
     if (!ossConfig) return;
 
+    const rootPath = ossConfig.rootPath || '';
+    const effectivePath = currentPath || rootPath;
+
     try {
       const client = initOSSClient(ossConfig);
-      const key = `${currentPath}${folderName}/`;
+      const key = `${effectivePath}${folderName}/`;
       await client.put(key, Buffer.from(''));
       get().fetchFiles(true);
     } catch (err: any) {

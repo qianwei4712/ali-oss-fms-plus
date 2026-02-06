@@ -32,9 +32,16 @@ const FileManager = () => {
     if (!ossConfig) {
       navigate('/settings');
     } else {
-      fetchFiles();
+      const root = ossConfig.rootPath || '';
+      // If currentPath is empty and rootPath is configured, start at rootPath
+      if (!currentPath && root) {
+        setCurrentPath(root);
+      } else {
+        fetchFiles();
+      }
     }
-  }, [ossConfig, navigate, currentPath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ossConfig, navigate]);
 
   const handleFolderClick = (folderName: string) => {
     setCurrentPath(currentPath + folderName + '/');
@@ -51,8 +58,16 @@ const FileManager = () => {
   };
 
   const handleBack = () => {
+    const root = ossConfig?.rootPath || '';
+    if (currentPath === root) return;
+    
     const parent = getParentPath(currentPath);
-    setCurrentPath(parent);
+    // Ensure we don't go above root path
+    if (root && !parent.startsWith(root) && parent !== root) {
+        setCurrentPath(root);
+    } else {
+        setCurrentPath(parent);
+    }
   };
 
   const handleDownload = async (fileName: string) => {
@@ -119,13 +134,17 @@ const FileManager = () => {
       {/* Top Bar */}
       <div className="p-4 border-b space-y-2 bg-background z-10 sticky top-0">
         <div className="flex items-center space-x-2">
-          {currentPath && (
+          {currentPath && currentPath !== (ossConfig?.rootPath || '') && (
             <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
           <h1 className="font-semibold text-lg truncate flex-1">
-            {currentPath || 'Home'}
+            {currentPath ? (
+              ossConfig?.rootPath && currentPath.startsWith(ossConfig.rootPath) 
+                ? (currentPath.replace(ossConfig.rootPath, '') || 'Home')
+                : currentPath
+            ) : 'Home'}
           </h1>
           <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)}>
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />

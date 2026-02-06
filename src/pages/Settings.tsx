@@ -22,6 +22,8 @@ const Settings = () => {
     bucket: '',
     accessKeyId: '',
     accessKeySecret: '',
+    rootPath: '',
+    recyclePath: '',
   });
   
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +36,8 @@ const Settings = () => {
         bucket: ossConfig.bucket,
         accessKeyId: ossConfig.accessKeyId,
         accessKeySecret: ossConfig.accessKeySecret,
+        rootPath: ossConfig.rootPath || '',
+        recyclePath: ossConfig.recyclePath || '',
       });
     }
   }, [ossConfig]);
@@ -151,6 +155,28 @@ const Settings = () => {
               type="password"
               placeholder="Secret..." 
               value={formData.accessKeySecret} 
+              onChange={handleChange} 
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="rootPath">Normal File Path (Optional)</Label>
+            <Input 
+              id="rootPath" 
+              name="rootPath" 
+              placeholder="e.g. normal/" 
+              value={formData.rootPath} 
+              onChange={handleChange} 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="recyclePath">Recycle Bin Path (Optional)</Label>
+            <Input 
+              id="recyclePath" 
+              name="recyclePath" 
+              placeholder="e.g. trash/" 
+              value={formData.recyclePath} 
               onChange={handleChange} 
             />
           </div>
