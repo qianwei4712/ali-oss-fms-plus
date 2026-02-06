@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import FileManager from '@/pages/FileManager';
 import Settings from '@/pages/Settings';
+import OSSConfig from '@/pages/OSSConfig';
+import RecycleBin from '@/pages/RecycleBin';
 import Reader from '@/pages/Reader';
 import Downloads from '@/pages/Downloads';
 import BottomNav from '@/components/BottomNav';
@@ -26,6 +28,8 @@ function App() {
           <Route path="/downloads" element={<Downloads />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
+        <Route path="/settings/oss" element={<OSSConfig />} />
+        <Route path="/settings/recycle" element={<RecycleBin />} />
         <Route path="/reader/:path" element={<Reader />} />
       </Routes>
       <Toaster />

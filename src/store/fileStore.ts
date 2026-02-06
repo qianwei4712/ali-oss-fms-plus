@@ -19,6 +19,8 @@ interface FileState {
   fetchFiles: (refresh?: boolean) => Promise<void>;
   deleteFiles: (keys: string[]) => Promise<void>;
   createFolder: (folderName: string) => Promise<void>;
+  renameFile: (oldKey: string, newName: string) => Promise<void>;
+  moveFile: (sourceKey: string, destinationPath: string) => Promise<void>;
 }
 
 export const useFileStore = create<FileState>((set, get) => ({
@@ -201,6 +203,58 @@ export const useFileStore = create<FileState>((set, get) => ({
       get().fetchFiles(true);
     } catch (err: any) {
       set({ error: err.message });
+    }
+  },
+
+  renameFile: async (oldKey, newName) => {
+    const { ossConfig } = useConfigStore.getState();
+    if (!ossConfig) return;
+
+    // oldKey is full path: "folder/old.txt"
+    // newName is just name: "new.txt"
+    // We need to keep the folder path
+    const pathParts = oldKey.split('/');
+    pathParts.pop(); // Remove old filename
+    const folderPath = pathParts.join('/');
+    const newKey = folderPath ? `${folderPath}/${newName}` : newName;
+
+    set({ isLoading: true });
+    try {
+      const client = initOSSClient(ossConfig);
+      await client.copy(newKey, oldKey);
+      await client.delete(oldKey);
+      set({ isLoading: false });
+      get().fetchFiles(true);
+    } catch (err: any) {
+      set({ isLoading: false, error: err.message });
+      throw err;
+    }
+  },
+
+  moveFile: async (sourceKey, destinationPath) => {
+    const { ossConfig } = useConfigStore.getState();
+    if (!ossConfig) return;
+
+    // sourceKey: "folder/file.txt"
+    // destinationPath: "other/folder/"
+    const fileName = sourceKey.split('/').pop();
+    if (!fileName) return;
+
+    const newKey = destinationPath + fileName;
+    
+    // Check if moving to same location
+    if (sourceKey === newKey) return;
+
+    set({ isLoading: true });
+    try {
+      const client = initOSSClient(ossConfig);
+      await client.copy(newKey, sourceKey);
+      await client.delete(sourceKey);
+      set({ isLoading: false });
+      get().fetchFiles(true);
+    } catch (err: any) {
+      set({ isLoading: false, error: err.message });
+      throw err;
     }
   }
 

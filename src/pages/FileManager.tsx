@@ -1,17 +1,161 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
 import { downloadedTxtStore, DownloadedFile } from '@/utils/storage';
-import { initOSSClient, getParentPath } from '@/utils/oss';
+import { initOSSClient, getParentPath, OSSObject } from '@/utils/oss';
 import { formatFileSize, formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Folder, FileText, ArrowLeft, Search, RefreshCw, Trash2, Download } from 'lucide-react';
+import { 
+  Folder, 
+  FileText, 
+  ArrowLeft, 
+  Search, 
+  RefreshCw, 
+  Trash2, 
+  Download, 
+  Pencil, 
+  Move, 
+  Eye,
+  MoreVertical,
+  ChevronRight
+} from 'lucide-react';
 import { SwipeableList, SwipeableListItem, SwipeAction, TrailingActions, Type as ListType } from 'react-swipeable-list';
 import 'react-swipeable-list/dist/styles.css';
+
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
+const FolderPicker = ({ 
+  currentPath: initialPath, 
+  onSelect, 
+  onCancel 
+}: { 
+  currentPath: string;
+  onSelect: (path: string) => void;
+  onCancel: () => void;
+}) => {
+  const { ossConfig } = useConfigStore();
+  const [path, setPath] = useState(ossConfig?.rootPath || '');
+  const [folders, setFolders] = useState<OSSObject[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchFolders(path);
+  }, [path]);
+
+  const fetchFolders = async (dirPath: string) => {
+    if (!ossConfig) return;
+    setLoading(true);
+    try {
+      const client = initOSSClient(ossConfig);
+      const result = await client.list({
+        prefix: dirPath,
+        delimiter: '/',
+        ['max-keys']: 100,
+      }, {});
+
+      const folderList: OSSObject[] = [];
+      if (result.prefixes) {
+        result.prefixes.forEach((prefix: string) => {
+            // Remove the current path from the name to get the display name
+            const name = prefix.replace(dirPath, '').replace(/\/$/, '');
+            if (name) {
+                folderList.push({
+                    name: name,
+                    url: '',
+                    lastModified: '',
+                    size: 0,
+                    type: 'folder'
+                });
+            }
+        });
+      }
+      setFolders(folderList);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load folders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFolderClick = (folderName: string) => {
+    setPath(path + folderName + '/');
+  };
+
+  const handleBack = () => {
+    const root = ossConfig?.rootPath || '';
+    if (path === root) return;
+    const parent = getParentPath(path);
+    if (root && !parent.startsWith(root) && parent !== root) {
+        setPath(root);
+    } else {
+        setPath(parent);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2 border-b pb-2">
+         {path !== (ossConfig?.rootPath || '') && (
+            <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+         )}
+         <div className="text-sm font-medium truncate flex-1">
+            {path || 'Root'}
+         </div>
+      </div>
+      
+      <div className="h-[200px] overflow-y-auto space-y-1">
+        {loading ? (
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+            </div>
+        ) : folders.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">No subfolders</div>
+        ) : (
+            folders.map(f => (
+                <div 
+                    key={f.name}
+                    className="flex items-center p-2 hover:bg-accent rounded-md cursor-pointer"
+                    onClick={() => handleFolderClick(f.name)}
+                >
+                    <Folder className="h-4 w-4 mr-2 text-blue-500" />
+                    <span className="text-sm truncate flex-1">{f.name}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+            ))
+        )}
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-2">
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSelect(path)}>Move Here</Button>
+      </div>
+    </div>
+  );
+};
 
 const FileManager = () => {
   const navigate = useNavigate();
@@ -24,16 +168,25 @@ const FileManager = () => {
     fetchFiles, 
     setCurrentPath, 
     deleteFiles,
+    renameFile,
+    moveFile,
     searchQuery,
     setSearchQuery
   } = useFileStore();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<OSSObject | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ossConfig) {
       navigate('/settings');
     } else {
       const root = ossConfig.rootPath || '';
-      // If currentPath is empty and rootPath is configured, start at rootPath
       if (!currentPath && root) {
         setCurrentPath(root);
       } else {
@@ -47,14 +200,9 @@ const FileManager = () => {
     setCurrentPath(currentPath + folderName + '/');
   };
 
-  const handleFileClick = (fileName: string) => {
-    // Only support txt for now as per requirements
-    if (fileName.endsWith('.txt')) {
-      const fullPath = currentPath + fileName;
-      navigate(`/reader/${encodeURIComponent(fullPath)}`);
-    } else {
-      toast.info('Only .txt files are supported for reading');
-    }
+  const handleFileClick = (file: OSSObject) => {
+    setSelectedFile(file);
+    setMenuOpen(true);
   };
 
   const handleBack = () => {
@@ -62,7 +210,6 @@ const FileManager = () => {
     if (currentPath === root) return;
     
     const parent = getParentPath(currentPath);
-    // Ensure we don't go above root path
     if (root && !parent.startsWith(root) && parent !== root) {
         setCurrentPath(root);
     } else {
@@ -84,7 +231,7 @@ const FileManager = () => {
         key,
         name: fileName,
         content,
-        encoding: 'UTF-8', // Detection logic should be in reader or here, for now default
+        encoding: 'UTF-8', 
         downloadTime: new Date().toISOString(),
         size: result.res.headers['content-length'] ? parseInt(result.res.headers['content-length'] as string) : 0
       };
@@ -98,10 +245,55 @@ const FileManager = () => {
     }
   };
 
-  const handleDelete = async (fileName: string) => {
-    if (confirm(`Delete ${fileName}?`)) {
-      await deleteFiles([currentPath + fileName]);
+  const handleDelete = (fileName: string) => {
+    setFileToDelete(fileName);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (fileToDelete) {
+      await deleteFiles([currentPath + fileToDelete]);
       toast.success('File deleted');
+      setDeleteOpen(false);
+      setFileToDelete(null);
+    }
+  };
+
+  const onRename = async () => {
+    if (!selectedFile || !newName.trim()) return;
+    if (newName === selectedFile.name) {
+        setRenameOpen(false);
+        return;
+    }
+    
+    try {
+        const oldKey = currentPath + selectedFile.name;
+        // If folder, we need to handle it differently or block renaming folders for now?
+        // Renaming folders in OSS is expensive (recursive copy).
+        // Let's support file rename for now.
+        if (selectedFile.type === 'folder') {
+             toast.error('Renaming folders is not supported yet');
+             return;
+        }
+
+        await renameFile(oldKey, newName);
+        toast.success('Renamed successfully');
+        setRenameOpen(false);
+    } catch (err: any) {
+        toast.error('Rename failed: ' + err.message);
+    }
+  };
+
+  const onMove = async (destinationPath: string) => {
+    if (!selectedFile) return;
+    
+    try {
+        const sourceKey = currentPath + selectedFile.name;
+        await moveFile(sourceKey, destinationPath);
+        toast.success('Moved successfully');
+        setMoveOpen(false);
+    } catch (err: any) {
+        toast.error('Move failed: ' + err.message);
     }
   };
 
@@ -120,7 +312,6 @@ const FileManager = () => {
         </SwipeAction>
       )}
       <SwipeAction
-        destructive={true}
         onClick={() => handleDelete(fileName)}
         className="bg-red-500 flex items-center justify-center px-4"
       >
@@ -181,8 +372,8 @@ const FileManager = () => {
                 trailingActions={trailingActions(file.name, file.type === 'folder')}
               >
                 <div 
-                  className="w-full p-4 border-b bg-background flex items-center space-x-4 active:bg-accent"
-                  onClick={() => file.type === 'folder' ? handleFolderClick(file.name) : handleFileClick(file.name)}
+                  className="w-full p-4 border-b bg-background flex items-center space-x-4 active:bg-accent cursor-pointer"
+                  onClick={() => file.type === 'folder' ? handleFolderClick(file.name) : handleFileClick(file)}
                 >
                   <div className="p-2 bg-muted rounded-full">
                     {file.type === 'folder' ? (
@@ -198,12 +389,142 @@ const FileManager = () => {
                       {formatDate(file.lastModified)}
                     </p>
                   </div>
+                  {file.type === 'file' && <MoreVertical className="h-4 w-4 text-muted-foreground" />}
                 </div>
               </SwipeableListItem>
             ))}
           </SwipeableList>
         )}
       </div>
+
+      {/* Options Menu */}
+      <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{selectedFile?.name}</DrawerTitle>
+          </DrawerHeader>
+          <div className="p-4 space-y-2">
+            <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => {
+                    setMenuOpen(false);
+                    setNewName(selectedFile?.name || '');
+                    setRenameOpen(true);
+                }}
+            >
+                <Pencil className="mr-2 h-4 w-4" /> Rename
+            </Button>
+            <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => {
+                    if (selectedFile) handleDownload(selectedFile.name);
+                    setMenuOpen(false);
+                }}
+            >
+                <Download className="mr-2 h-4 w-4" /> Download
+            </Button>
+            <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => {
+                    if (selectedFile) {
+                        if (selectedFile.name.endsWith('.txt')) {
+                            const fullPath = currentPath + selectedFile.name;
+                            navigate(`/reader/${encodeURIComponent(fullPath)}`);
+                        } else {
+                            toast.info('Only .txt files supported');
+                        }
+                    }
+                    setMenuOpen(false);
+                }}
+            >
+                <Eye className="mr-2 h-4 w-4" /> Read Online
+            </Button>
+            <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => {
+                    setMenuOpen(false);
+                    setMoveOpen(true);
+                }}
+            >
+                <Move className="mr-2 h-4 w-4" /> Move
+            </Button>
+            <Button 
+                variant="destructive" 
+                className="w-full justify-start" 
+                onClick={() => {
+                    if (selectedFile) handleDelete(selectedFile.name);
+                    setMenuOpen(false);
+                }}
+            >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          </div>
+          <DrawerFooter>
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Rename File</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="name">New Name</Label>
+                    <Input 
+                        id="name" 
+                        value={newName} 
+                        onChange={(e) => setNewName(e.target.value)} 
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
+                <Button onClick={onRename}>Rename</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Dialog */}
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Move to...</DialogTitle>
+                <DialogDescription>Select destination folder</DialogDescription>
+            </DialogHeader>
+            <FolderPicker 
+                currentPath={currentPath}
+                onSelect={onMove}
+                onCancel={() => setMoveOpen(false)}
+            />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogDescription>
+                    Are you sure you want to delete "{fileToDelete}"? This action cannot be undone.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
