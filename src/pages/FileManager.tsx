@@ -261,7 +261,13 @@ const FileManager = () => {
 
   const onRename = async () => {
     if (!selectedFile || !newName.trim()) return;
-    if (newName === selectedFile.name) {
+    
+    let finalName = newName.trim();
+    if (!finalName.endsWith('.txt')) {
+        finalName += '.txt';
+    }
+
+    if (finalName === selectedFile.name) {
         setRenameOpen(false);
         return;
     }
@@ -276,7 +282,7 @@ const FileManager = () => {
              return;
         }
 
-        await renameFile(oldKey, newName);
+        await renameFile(oldKey, finalName);
         toast.success('Renamed successfully');
         setRenameOpen(false);
     } catch (err: any) {
@@ -409,7 +415,7 @@ const FileManager = () => {
                 className="w-full justify-start" 
                 onClick={() => {
                     setMenuOpen(false);
-                    setNewName(selectedFile?.name || '');
+                    setNewName(selectedFile?.name.replace(/\.txt$/, '') || '');
                     setRenameOpen(true);
                 }}
             >
