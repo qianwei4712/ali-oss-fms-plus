@@ -40,6 +40,9 @@ const Reader = () => {
   const [tempRegex, setTempRegex] = useState(DEFAULT_REGEX); // For input field
   const [isTocOpen, setIsTocOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Progress restoration state
+  const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
 
   // Load saved reader settings
   useEffect(() => {
@@ -111,6 +114,11 @@ const Reader = () => {
     loadContent();
   }, [path, isOffline, ossConfig, navigate]);
 
+  // Reset restored state when path changes
+  useEffect(() => {
+    setHasRestoredProgress(false);
+  }, [path]);
+
   // Process Chapters
   useEffect(() => {
     if (!content) return;
@@ -149,14 +157,53 @@ const Reader = () => {
         }
 
         setChapters(newChapters);
-        setCurrentChapterIndex(0);
+        
+        // Restore progress
+        const savedProgress = localStorage.getItem('reader_progress');
+        let initialIndex = 0;
+        if (savedProgress && path) {
+            try {
+                const progressMap = JSON.parse(savedProgress);
+                if (typeof progressMap[path] === 'number') {
+                    initialIndex = progressMap[path];
+                }
+            } catch (e) {
+                console.error("Failed to parse reader_progress", e);
+            }
+        }
+
+        if (initialIndex >= 0 && initialIndex < newChapters.length) {
+            setCurrentChapterIndex(initialIndex);
+        } else {
+            setCurrentChapterIndex(0);
+        }
+        
+        // Mark as restored so we can start saving progress
+        setHasRestoredProgress(true);
     } catch (e) {
         console.error("Regex error", e);
         // Fallback
         setChapters([{ title: 'Full Content', content: content, index: 0 }]);
         setCurrentChapterIndex(0);
+        setHasRestoredProgress(true);
     }
-  }, [content, regexPattern]);
+  }, [content, regexPattern, path]);
+
+  // Save progress
+  useEffect(() => {
+    if (!path || !hasRestoredProgress) return;
+    try {
+        const savedProgress = localStorage.getItem('reader_progress');
+        let progressMap: Record<string, number> = {};
+        if (savedProgress) {
+            progressMap = JSON.parse(savedProgress);
+        }
+        progressMap[path] = currentChapterIndex;
+        localStorage.setItem('reader_progress', JSON.stringify(progressMap));
+    } catch (e) {
+        console.error("Failed to save progress", e);
+    }
+  }, [currentChapterIndex, path, hasRestoredProgress]);
 
   // Scroll to top when chapter changes
   useEffect(() => {
