@@ -244,13 +244,21 @@ const FileManager = () => {
       const result = await client.get(key);
       
       const content = result.content.toString();
+      let size = 0;
+      if (result.res && result.res.headers && result.res.headers['content-length']) {
+        size = parseInt(result.res.headers['content-length'] as string);
+      }
+      if (!size) {
+        size = new Blob([content]).size;
+      }
+
       const downloadedFile: DownloadedFile = {
         key,
         name: fileName,
         content,
         encoding: 'UTF-8', 
         downloadTime: new Date().toISOString(),
-        size: result.res.headers['content-length'] ? parseInt(result.res.headers['content-length'] as string) : 0
+        size
       };
 
       await downloadedTxtStore.setItem(key, downloadedFile);
