@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { useConfigStore } from '@/store/configStore';
 import FileManager from '@/pages/FileManager';
 import Settings from '@/pages/Settings';
 import OSSConfig from '@/pages/OSSConfig';
@@ -20,6 +22,14 @@ const MainLayout = () => {
 };
 
 function App() {
+  const { theme } = useConfigStore();
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark', 'sepia');
+    root.classList.add(theme);
+  }, [theme]);
+
   return (
     <Router>
       <Routes>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
+import { useTheme } from '@/hooks/useTheme';
 import { initOSSClient } from '@/utils/oss';
 import { downloadedTxtStore } from '@/utils/storage';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,15 @@ const Reader = () => {
   const isOffline = searchParams.get('offline') === 'true';
   const navigate = useNavigate();
   const { ossConfig } = useConfigStore();
+  const { theme: globalTheme } = useTheme();
   
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState(16);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>(() => {
+    const saved = localStorage.getItem('reader_theme_pref');
+    return (saved as any) || globalTheme;
+  });
   
   // Chapter State
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -48,8 +53,7 @@ const Reader = () => {
   useEffect(() => {
     const savedSize = localStorage.getItem('reader_fontSize');
     if (savedSize) setFontSize(parseInt(savedSize));
-    const savedTheme = localStorage.getItem('reader_theme');
-    if (savedTheme) setTheme(savedTheme as any);
+    
     const savedRegex = localStorage.getItem('reader_regex');
     if (savedRegex) {
         setRegexPattern(savedRegex);
@@ -57,11 +61,24 @@ const Reader = () => {
     }
   }, []);
 
-  const saveSettings = (newSize: number, newTheme: 'light' | 'dark' | 'sepia') => {
+  // Sync theme with global settings or saved preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('reader_theme_pref');
+    if (savedTheme) {
+        setTheme(savedTheme as any);
+    } else {
+        setTheme(globalTheme);
+    }
+  }, [globalTheme]);
+
+  const saveFontSize = (newSize: number) => {
     setFontSize(newSize);
-    setTheme(newTheme);
     localStorage.setItem('reader_fontSize', newSize.toString());
-    localStorage.setItem('reader_theme', newTheme);
+  };
+
+  const saveTheme = (newTheme: 'light' | 'dark' | 'sepia') => {
+    setTheme(newTheme);
+    localStorage.setItem('reader_theme_pref', newTheme);
   };
 
   const saveRegex = () => {
@@ -228,17 +245,11 @@ const Reader = () => {
     }
   };
 
-  const themeClasses = {
-    light: 'bg-white text-gray-900',
-    dark: 'bg-gray-900 text-gray-100',
-    sepia: 'bg-[#f4ecd8] text-[#5b4636]',
-  };
-
   const currentChapterContent = chapters[currentChapterIndex]?.content || '';
   const currentChapterTitle = chapters[currentChapterIndex]?.title || '';
 
   return (
-    <div className={cn("min-h-screen flex flex-col transition-colors duration-300 h-screen overflow-hidden", themeClasses[theme])}>
+    <div className={cn("min-h-screen flex flex-col transition-colors duration-300 h-screen overflow-hidden bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn("flex-none h-14 flex items-center px-4 z-50 bg-background/80 backdrop-blur border-b")}>
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -260,7 +271,7 @@ const Reader = () => {
                     <List className="h-5 w-5" />
                 </Button>
             </DrawerTrigger>
-            <DrawerContent className="h-[80vh]">
+            <DrawerContent className={cn("h-[80vh] text-foreground", theme)}>
                 <DrawerHeader>
                     <DrawerTitle>Table of Contents</DrawerTitle>
                 </DrawerHeader>
@@ -291,7 +302,7 @@ const Reader = () => {
               <SettingsIcon className="h-5 w-5" />
             </Button>
           </DrawerTrigger>
-          <DrawerContent>
+          <DrawerContent className={cn("text-foreground", theme)}>
             <DrawerHeader>
               <DrawerTitle>Reader Settings</DrawerTitle>
             </DrawerHeader>
@@ -306,7 +317,7 @@ const Reader = () => {
                   min={12} 
                   max={32} 
                   step={1} 
-                  onValueChange={(vals) => saveSettings(vals[0], theme)} 
+                  onValueChange={(vals) => saveFontSize(vals[0])} 
                 />
               </div>
               
@@ -316,21 +327,21 @@ const Reader = () => {
                   <Button 
                     variant={theme === 'light' ? 'default' : 'outline'} 
                     className="flex-1"
-                    onClick={() => saveSettings(fontSize, 'light')}
+                    onClick={() => saveTheme('light')}
                   >
                     <Sun className="h-4 w-4 mr-2" /> Light
                   </Button>
                   <Button 
                     variant={theme === 'dark' ? 'default' : 'outline'} 
                     className="flex-1"
-                    onClick={() => saveSettings(fontSize, 'dark')}
+                    onClick={() => saveTheme('dark')}
                   >
                     <Moon className="h-4 w-4 mr-2" /> Dark
                   </Button>
                   <Button 
                     variant={theme === 'sepia' ? 'default' : 'outline'} 
                     className="flex-1"
-                    onClick={() => saveSettings(fontSize, 'sepia')}
+                    onClick={() => saveTheme('sepia')}
                   >
                     <Eye className="h-4 w-4 mr-2" /> Sepia
                   </Button>
