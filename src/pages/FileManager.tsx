@@ -171,7 +171,9 @@ const FileManager = () => {
     renameFile,
     moveFile,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    searchResults,
+    isSearching
   } = useFileStore();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -181,6 +183,21 @@ const FileManager = () => {
   const [moveOpen, setMoveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+
+  const [searchInputValue, setSearchInputValue] = useState('');
+
+  // Sync searchInputValue with store searchQuery when searchQuery is cleared externally
+  useEffect(() => {
+    if (!searchQuery) {
+        setSearchInputValue('');
+    }
+  }, [searchQuery]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+        setSearchQuery(searchInputValue);
+    }
+  };
 
   useEffect(() => {
     if (!ossConfig) {
@@ -303,9 +320,7 @@ const FileManager = () => {
     }
   };
 
-  const filteredFiles = files.filter(f => 
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const displayFiles = searchQuery ? searchResults : files;
 
   const trailingActions = (fileName: string, isFolder: boolean) => (
     <TrailingActions>
@@ -352,15 +367,16 @@ const FileManager = () => {
           <Input 
             placeholder="Search files..." 
             className="pl-8" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInputValue}
+            onChange={(e) => setSearchInputValue(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
       </div>
 
       {/* File List */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading && files.length === 0 ? (
+        {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
               <Skeleton key={i} className="h-16 w-full" />
@@ -368,18 +384,44 @@ const FileManager = () => {
           </div>
         ) : error ? (
           <div className="p-4 text-center text-red-500">{error}</div>
-        ) : filteredFiles.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">No files found</div>
+        ) : displayFiles.length === 0 ? (
+          <div className="p-4 text-center text-muted-foreground">
+             {searchQuery ? 'No results found' : 'No files found'}
+          </div>
         ) : (
           <SwipeableList fullSwipe={false} type={ListType.IOS}>
-            {filteredFiles.map((file) => (
+            {displayFiles.map((file) => (
               <SwipeableListItem
-                key={file.name}
+                key={file.url || file.name} // url is unique for files, name for folders
                 trailingActions={trailingActions(file.name, file.type === 'folder')}
               >
                 <div 
                   className="w-full p-4 border-b bg-background flex items-center space-x-4 active:bg-accent cursor-pointer"
-                  onClick={() => file.type === 'folder' ? handleFolderClick(file.name) : handleFileClick(file)}
+                  onClick={() => {
+                      if (file.type === 'folder') {
+                          // If searching, we might need to handle full path navigation differently?
+                          // Currently handleFolderClick appends to currentPath.
+                          // If search result returns full relative path like "subdir/folder", we need to set path.
+                          // But our search logic will likely return objects.
+                          // If file.name is "subdir/folder", handleFolderClick appends it?
+                          // Standard file listing: name is "folder". currentPath is "root/". click -> "root/folder/"
+                          // Search result: name might be "sub/folder" (relative to root).
+                          // If we click it, we probably want to go INTO it.
+                          // If the name is full path relative to search root, we should just set path.
+                          
+                          // For simplicity, let's assume if searching, clicking folder jumps to that folder.
+                          if (searchQuery) {
+                              const fullPath = (ossConfig?.rootPath || '') + file.name + '/';
+                              setCurrentPath(fullPath);
+                              setSearchQuery(''); // Clear search on navigation
+                              setSearchInputValue(''); // Clear local input
+                          } else {
+                              handleFolderClick(file.name);
+                          }
+                      } else {
+                          handleFileClick(file);
+                      }
+                  }}
                 >
                   <div className="p-2 bg-muted rounded-full">
                     {file.type === 'folder' ? (
@@ -393,6 +435,7 @@ const FileManager = () => {
                     <p className="text-xs text-muted-foreground">
                       {file.type === 'file' ? `${formatFileSize(file.size)} • ` : ''}
                       {formatDate(file.lastModified)}
+                      {searchQuery && <span className="ml-2 text-xs opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
                     </p>
                   </div>
                   {file.type === 'file' && <MoreVertical className="h-4 w-4 text-muted-foreground" />}
@@ -437,7 +480,22 @@ const FileManager = () => {
                 onClick={() => {
                     if (selectedFile) {
                         if (selectedFile.name.endsWith('.txt')) {
-                            const fullPath = currentPath + selectedFile.name;
+                            // If searching, selectedFile.name includes full relative path.
+                            // If browsing, it's just filename.
+                            // But wait, our fileStore logic:
+                            // When browsing: files have name relative to currentPath.
+                            // When searching: searchResults have name relative to rootPath.
+                            
+                            // If we are searching, currentPath might be irrelevant to the file's location.
+                            // We should construct full path based on whether we are searching or not.
+                            
+                            let fullPath = '';
+                            if (searchQuery) {
+                                fullPath = (ossConfig?.rootPath || '') + selectedFile.name;
+                            } else {
+                                fullPath = currentPath + selectedFile.name;
+                            }
+                            
                             navigate(`/reader/${encodeURIComponent(fullPath)}`);
                         } else {
                             toast.info('Only .txt files supported');

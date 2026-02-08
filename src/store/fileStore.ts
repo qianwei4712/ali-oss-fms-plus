@@ -10,6 +10,8 @@ interface FileState {
   error: string | null;
   selectedFiles: string[]; // Keys
   searchQuery: string;
+  searchResults: OSSObject[];
+  isSearching: boolean;
   
   setCurrentPath: (path: string) => void;
   setSearchQuery: (query: string) => void;
@@ -30,21 +32,73 @@ export const useFileStore = create<FileState>((set, get) => ({
   error: null,
   selectedFiles: [],
   searchQuery: '',
+  searchResults: [],
+  isSearching: false,
 
   setCurrentPath: (path) => {
-    set({ currentPath: path, selectedFiles: [] });
+    set({ currentPath: path, selectedFiles: [], searchQuery: '', searchResults: [] });
     get().fetchFiles();
   },
 
-  setSearchQuery: (query) => {
+  setSearchQuery: async (query) => {
     set({ searchQuery: query });
-    // If search is active, we might want to trigger a search or filter locally
-    // For now, let's assume simple filtering or server-side search if implemented
-    // The PRD mentions "Name Search", which usually means listing all and filtering, or using OSS search if available (OSS doesn't have good search).
-    // Usually we list with prefix. If searching globally, that's expensive on OSS.
-    // "检索目录以及文件...名称搜索" - implies local filter or recursive list.
-    // For MVP, let's just filter current view or simple prefix search.
-    // If the query is empty, reload current path.
+    if (!query.trim()) {
+        set({ searchResults: [], isSearching: false });
+        return;
+    }
+
+    const { ossConfig } = useConfigStore.getState();
+    if (!ossConfig) return;
+
+    set({ isSearching: true, error: null });
+    
+    // Global search implementation
+    // Since OSS doesn't support recursive search efficiently, we have to list recursively.
+    // However, listing everything might be too heavy.
+    // We will use prefix listing with delimiter='' to list all objects recursively under rootPath.
+    // And then filter locally.
+    // Limit to max 1000 items for performance?
+
+    try {
+        const client = initOSSClient(ossConfig);
+        const rootPath = ossConfig.rootPath || '';
+        
+        const result = await client.list({
+            prefix: rootPath,
+            // delimiter: '', // Empty delimiter means recursive list
+            ['max-keys']: 1000, // Increased limit as requested, though "unlimited" is hard in one go without pagination loop
+        }, {});
+
+        const matches: OSSObject[] = [];
+        
+        if (result.objects) {
+            result.objects.forEach(obj => {
+                // Skip root folder itself
+                if (obj.name === rootPath) return;
+
+                // Simple case-insensitive name match
+                // We want to match the filename part or full path? User asked for "search all".
+                // Usually matching filename is more expected.
+                const relativePath = obj.name.replace(rootPath, '');
+                const fileName = relativePath.split('/').pop() || '';
+                
+                if (fileName.toLowerCase().includes(query.toLowerCase())) {
+                    matches.push({
+                        name: relativePath, // Keep relative path for display context
+                        url: obj.url,
+                        lastModified: obj.lastModified,
+                        size: obj.size,
+                        type: 'file'
+                    });
+                }
+            });
+        }
+        
+        set({ searchResults: matches, isSearching: false });
+    } catch (err: any) {
+        console.error("Search failed", err);
+        set({ isSearching: false, error: "Search failed: " + err.message });
+    }
   },
 
   toggleSelection: (key) => {
