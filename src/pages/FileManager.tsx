@@ -54,49 +54,49 @@ const FolderPicker = ({
   onCancel: () => void;
 }) => {
   const { ossConfig } = useConfigStore();
-  const [path, setPath] = useState(ossConfig?.rootPath || '');
+  const [path, setPath] = useState(initialPath || ossConfig?.rootPath || '');
   const [folders, setFolders] = useState<OSSObject[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchFolders(path);
-  }, [path]);
+    const fetchFolders = async (dirPath: string) => {
+      if (!ossConfig) return;
+      setLoading(true);
+      try {
+        const client = initOSSClient(ossConfig);
+        const result = await client.list({
+          prefix: dirPath,
+          delimiter: '/',
+          ['max-keys']: 100,
+        }, {});
 
-  const fetchFolders = async (dirPath: string) => {
-    if (!ossConfig) return;
-    setLoading(true);
-    try {
-      const client = initOSSClient(ossConfig);
-      const result = await client.list({
-        prefix: dirPath,
-        delimiter: '/',
-        ['max-keys']: 100,
-      }, {});
-
-      const folderList: OSSObject[] = [];
-      if (result.prefixes) {
-        result.prefixes.forEach((prefix: string) => {
-            // Remove the current path from the name to get the display name
-            const name = prefix.replace(dirPath, '').replace(/\/$/, '');
-            if (name) {
-                folderList.push({
-                    name: name,
-                    url: '',
-                    lastModified: '',
-                    size: 0,
-                    type: 'folder'
-                });
-            }
-        });
+        const folderList: OSSObject[] = [];
+        if (result.prefixes) {
+          result.prefixes.forEach((prefix: string) => {
+              // Remove the current path from the name to get the display name
+              const name = prefix.replace(dirPath, '').replace(/\/$/, '');
+              if (name) {
+                  folderList.push({
+                      name: name,
+                      url: '',
+                      lastModified: '',
+                      size: 0,
+                      type: 'folder'
+                  });
+              }
+          });
+        }
+        setFolders(folderList);
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to load folders');
+      } finally {
+        setLoading(false);
       }
-      setFolders(folderList);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to load folders');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchFolders(path);
+  }, [path, ossConfig]);
 
   const handleFolderClick = (folderName: string) => {
     setPath(path + folderName + '/');
@@ -264,9 +264,10 @@ const FileManager = () => {
       await downloadedTxtStore.setItem(key, downloadedFile);
       toast.dismiss();
       toast.success('Downloaded to offline storage');
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.dismiss();
-      toast.error('Download failed: ' + err.message);
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error('Download failed: ' + message);
     }
   };
 
@@ -310,8 +311,9 @@ const FileManager = () => {
         await renameFile(oldKey, finalName);
         toast.success('Renamed successfully');
         setRenameOpen(false);
-    } catch (err: any) {
-        toast.error('Rename failed: ' + err.message);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error('Rename failed: ' + message);
     }
   };
 
@@ -323,8 +325,9 @@ const FileManager = () => {
         await moveFile(sourceKey, destinationPath);
         toast.success('Moved successfully');
         setMoveOpen(false);
-    } catch (err: any) {
-        toast.error('Move failed: ' + err.message);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error('Move failed: ' + message);
     }
   };
 
@@ -335,16 +338,18 @@ const FileManager = () => {
       {!isFolder && (
         <SwipeAction
           onClick={() => handleDownload(fileName)}
-          className="bg-green-500 flex items-center justify-center px-4"
         >
-          <Download className="text-white" />
+          <div className="bg-green-500 flex items-center justify-center px-4 h-full">
+            <Download className="text-white" />
+          </div>
         </SwipeAction>
       )}
       <SwipeAction
         onClick={() => handleDelete(fileName)}
-        className="bg-red-500 flex items-center justify-center px-4"
       >
-        <Trash2 className="text-white" />
+        <div className="bg-red-500 flex items-center justify-center px-4 h-full">
+          <Trash2 className="text-white" />
+        </div>
       </SwipeAction>
     </TrailingActions>
   );
