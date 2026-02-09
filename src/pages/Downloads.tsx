@@ -4,13 +4,23 @@ import { downloadedTxtStore, DownloadedFile } from '@/utils/storage';
 import { formatFileSize, formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from 'sonner';
-import { FileText, Trash2, BookOpen } from 'lucide-react';
+import { FileText, Trash2 } from 'lucide-react';
 
 const Downloads = () => {
   const navigate = useNavigate();
   const [files, setFiles] = useState<DownloadedFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
   const fetchDownloads = async () => {
     setIsLoading(true);
@@ -28,12 +38,19 @@ const Downloads = () => {
     fetchDownloads();
   }, []);
 
-  const handleDelete = async (key: string, e: React.MouseEvent) => {
+  const handleDelete = (key: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Remove from downloads?')) {
-      await downloadedTxtStore.removeItem(key);
+    setFileToDelete(key);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (fileToDelete) {
+      await downloadedTxtStore.removeItem(fileToDelete);
       toast.success('Removed from downloads');
       fetchDownloads();
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
     }
   };
 
@@ -85,6 +102,21 @@ const Downloads = () => {
           ))
         )}
       </div>
+      
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this file from downloads? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
