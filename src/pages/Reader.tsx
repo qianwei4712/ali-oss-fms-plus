@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useTheme } from '@/hooks/useTheme';
@@ -48,6 +48,15 @@ const Reader = () => {
   
   // Progress restoration state
   const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
+
+  // Auto-scroll to active chapter in TOC
+  const scrollToActiveChapter = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setTimeout(() => {
+        node.scrollIntoView({ behavior: 'auto', block: 'center' });
+      }, 300);
+    }
+  }, []);
 
   // Load saved reader settings
   useEffect(() => {
@@ -279,6 +288,7 @@ const Reader = () => {
                     {chapters.map((chapter) => (
                         <div 
                             key={chapter.index}
+                            ref={currentChapterIndex === chapter.index ? scrollToActiveChapter : null}
                             className={cn(
                                 "p-3 rounded-md cursor-pointer hover:bg-accent text-sm truncate",
                                 currentChapterIndex === chapter.index ? "bg-accent font-medium" : ""
