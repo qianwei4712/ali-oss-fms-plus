@@ -1,16 +1,19 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
+import { useFileStore } from '@/store/fileStore';
 import { useTheme } from '@/hooks/useTheme';
-import { initOSSClient } from '@/utils/oss';
+import { initOSSClient, getParentPath } from '@/utils/oss';
 import { downloadedTxtStore } from '@/utils/storage';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { FolderPicker } from '@/components/FolderPicker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move } from 'lucide-react';
 import chardet from 'chardet';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +31,7 @@ const Reader = () => {
   const isOffline = searchParams.get('offline') === 'true';
   const navigate = useNavigate();
   const { ossConfig } = useConfigStore();
+  const { deleteFiles, moveFile } = useFileStore();
   const { theme: globalTheme } = useTheme();
   
   const [content, setContent] = useState('');
@@ -44,6 +48,9 @@ const Reader = () => {
   const [regexPattern, setRegexPattern] = useState(DEFAULT_REGEX);
   const [tempRegex, setTempRegex] = useState(DEFAULT_REGEX); // For input field
   const [isTocOpen, setIsTocOpen] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Progress restoration state
@@ -57,6 +64,34 @@ const Reader = () => {
       }, 300);
     }
   }, []);
+
+  const handleDelete = async () => {
+    if (!path) return;
+    try {
+        const key = decodeURIComponent(path);
+        await deleteFiles([key]);
+        toast.success('File deleted');
+        navigate(-1);
+    } catch (e: any) {
+        toast.error('Failed to delete file: ' + e.message);
+    }
+  };
+
+  const handleMove = async (destinationPath: string) => {
+    if (!path) return;
+    try {
+        const key = decodeURIComponent(path);
+        await moveFile(key, destinationPath);
+        toast.success('File moved');
+        setIsMoveOpen(false);
+        setIsActionsOpen(false);
+        // Navigate to the new location or just go back
+        // Going back seems safer as the current path is now invalid
+        navigate(-1);
+    } catch (e: any) {
+        toast.error('Failed to move file: ' + e.message);
+    }
+  };
 
   // Load saved reader settings
   useEffect(() => {
@@ -376,6 +411,47 @@ const Reader = () => {
             </div>
           </DrawerContent>
         </Drawer>
+
+        {/* Actions Trigger */}
+        <Drawer open={isActionsOpen} onOpenChange={setIsActionsOpen}>
+            <DrawerTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-5 w-5" />
+                </Button>
+            </DrawerTrigger>
+            <DrawerContent className={cn("text-foreground", theme)}>
+                <DrawerHeader>
+                    <DrawerTitle>File Actions</DrawerTitle>
+                </DrawerHeader>
+                <div className="p-4 space-y-2">
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start" 
+                        onClick={() => {
+                            setIsActionsOpen(false);
+                            setIsMoveOpen(true);
+                        }}
+                    >
+                        <Move className="mr-2 h-4 w-4" /> Move
+                    </Button>
+                    <Button 
+                        variant="destructive" 
+                        className="w-full justify-start" 
+                        onClick={() => {
+                            setIsActionsOpen(false);
+                            setIsDeleteOpen(true);
+                        }}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </Button>
+                </div>
+                <DrawerFooter>
+                    <DrawerClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DrawerClose>
+                </DrawerFooter>
+            </DrawerContent>
+        </Drawer>
       </div>
 
       {/* Content */}
@@ -417,6 +493,40 @@ const Reader = () => {
           </>
         )}
       </div>
+      {/* Move Dialog */}
+      <Dialog open={isMoveOpen} onOpenChange={setIsMoveOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Move to...</DialogTitle>
+                <DialogDescription>Select destination folder</DialogDescription>
+            </DialogHeader>
+            <FolderPicker 
+                currentPath={path ? getParentPath(decodeURIComponent(path)) : ''}
+                onSelect={handleMove}
+                onCancel={() => setIsMoveOpen(false)}
+            />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogDescription>
+                    Are you sure you want to delete this file? This action cannot be undone.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={() => {
+                    handleDelete();
+                    setIsDeleteOpen(false);
+                }}>Delete</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
