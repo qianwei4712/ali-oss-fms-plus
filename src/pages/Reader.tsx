@@ -55,6 +55,30 @@ const Reader = () => {
   
   // Progress restoration state
   const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [showControls, setShowControls] = useState(false);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        if (scrollHeight > clientHeight) {
+            const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+            setScrollProgress(progress);
+        } else {
+            setScrollProgress(0);
+        }
+    }
+  };
+
+  const handleProgressChange = (value: number[]) => {
+    const newProgress = value[0];
+    setScrollProgress(newProgress);
+    if (scrollRef.current) {
+        const { scrollHeight, clientHeight } = scrollRef.current;
+        const newScrollTop = (newProgress / 100) * (scrollHeight - clientHeight);
+        scrollRef.current.scrollTop = newScrollTop;
+    }
+  };
 
   // Auto-scroll to active chapter in TOC
   const scrollToActiveChapter = useCallback((node: HTMLDivElement | null) => {
@@ -293,9 +317,12 @@ const Reader = () => {
   const currentChapterTitle = chapters[currentChapterIndex]?.title || '';
 
   return (
-    <div className={cn("min-h-screen flex flex-col transition-colors duration-300 h-screen overflow-hidden bg-background text-foreground", theme)}>
+    <div className={cn("relative h-screen w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
-      <div className={cn("flex-none h-14 flex items-center px-4 z-50 bg-background/80 backdrop-blur border-b")}>
+      <div className={cn(
+        "absolute top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
+        showControls ? "translate-y-0" : "-translate-y-full"
+      )}>
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -457,7 +484,9 @@ const Reader = () => {
       {/* Content */}
       <div 
         ref={scrollRef}
-        className="flex-1 p-4 overflow-y-auto whitespace-pre-wrap leading-relaxed outline-none"
+        onScroll={handleScroll}
+        onClick={() => setShowControls(!showControls)}
+        className="h-full w-full overflow-y-auto whitespace-pre-wrap leading-relaxed outline-none p-4 pb-20 pt-20"
         style={{ fontSize: `${fontSize}px` }}
       >
         {isLoading ? (
@@ -466,12 +495,12 @@ const Reader = () => {
           </div>
         ) : (
           <>
-            <div className="min-h-[60vh]">
+            <div className="min-h-[60vh] max-w-3xl mx-auto">
                 {currentChapterContent}
             </div>
             
             {/* Navigation Buttons */}
-            <div className="flex justify-between items-center py-8 mt-4 border-t">
+            <div className="flex justify-between items-center py-8 mt-4 border-t max-w-3xl mx-auto" onClick={(e) => e.stopPropagation()}>
                 <Button 
                     variant="outline" 
                     onClick={handlePrevChapter}
@@ -493,6 +522,26 @@ const Reader = () => {
           </>
         )}
       </div>
+      
+      {/* Progress Footer */}
+      {!isLoading && (
+        <div className={cn(
+            "absolute bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur border-t flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
+            showControls ? "translate-y-0" : "translate-y-full"
+        )}>
+            <span className="text-xs text-muted-foreground w-12 text-right mr-4 font-mono">
+                {Math.round(scrollProgress)}%
+            </span>
+            <Slider
+                value={[scrollProgress]}
+                max={100}
+                step={1}
+                onValueChange={handleProgressChange}
+                className="flex-1 cursor-pointer"
+            />
+        </div>
+      )}
+
       {/* Move Dialog */}
       <Dialog open={isMoveOpen} onOpenChange={setIsMoveOpen}>
         <DialogContent>
