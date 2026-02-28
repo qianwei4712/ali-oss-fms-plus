@@ -363,7 +363,7 @@ const FileManager = () => {
                 onClick={() => {
                     if (selectedFile) {
                         if (selectedFile.name.endsWith('.txt')) {
-                            const fullPath = searchQuery ? (ossConfig?.rootPath || '') + selectedFile.name : currentPath + selectedFile.name;
+                            let fullPath = searchQuery ? (ossConfig?.rootPath || '') + selectedFile.name : currentPath + selectedFile.name;
                             navigate(`/reader/${encodeURIComponent(fullPath)}`);
                         } else {
                             toast.info('Only .txt files supported');
