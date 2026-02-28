@@ -353,53 +353,17 @@ const FileManager = () => {
       {/* Options Menu */}
       <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{selectedFile?.name}</DrawerTitle>
+          <DrawerHeader className="text-left">
+            <DrawerTitle className="truncate">{selectedFile?.name.split('/').pop()}</DrawerTitle>
           </DrawerHeader>
-          <div className="p-4 space-y-2">
+          <div className="p-4 grid grid-cols-2 gap-3">
             <Button 
                 variant="outline" 
-                className="w-full justify-start" 
-                onClick={() => {
-                    setMenuOpen(false);
-                    setNewName(selectedFile?.name.replace(/\.txt$/, '') || '');
-                    setRenameOpen(true);
-                }}
-            >
-                <Pencil className="mr-2 h-4 w-4" /> Rename
-            </Button>
-            <Button 
-                variant="outline" 
-                className="w-full justify-start" 
-                onClick={() => {
-                    if (selectedFile) handleDownload(selectedFile.name);
-                    setMenuOpen(false);
-                }}
-            >
-                <Download className="mr-2 h-4 w-4" /> Download
-            </Button>
-            <Button 
-                variant="outline" 
-                className="w-full justify-start" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-primary/10 bg-primary/5 hover:bg-primary/10 hover:text-primary transition-all rounded-xl" 
                 onClick={() => {
                     if (selectedFile) {
                         if (selectedFile.name.endsWith('.txt')) {
-                            // If searching, selectedFile.name includes full relative path.
-                            // If browsing, it's just filename.
-                            // But wait, our fileStore logic:
-                            // When browsing: files have name relative to currentPath.
-                            // When searching: searchResults have name relative to rootPath.
-                            
-                            // If we are searching, currentPath might be irrelevant to the file's location.
-                            // We should construct full path based on whether we are searching or not.
-                            
-                            let fullPath = '';
-                            if (searchQuery) {
-                                fullPath = (ossConfig?.rootPath || '') + selectedFile.name;
-                            } else {
-                                fullPath = currentPath + selectedFile.name;
-                            }
-                            
+                            const fullPath = searchQuery ? (ossConfig?.rootPath || '') + selectedFile.name : currentPath + selectedFile.name;
                             navigate(`/reader/${encodeURIComponent(fullPath)}`);
                         } else {
                             toast.info('Only .txt files supported');
@@ -408,32 +372,62 @@ const FileManager = () => {
                     setMenuOpen(false);
                 }}
             >
-                <Eye className="mr-2 h-4 w-4" /> Read Online
+                <Eye className="h-6 w-6" />
+                <span className="text-xs font-medium">Read Online</span>
             </Button>
+            
             <Button 
                 variant="outline" 
-                className="w-full justify-start" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-green-500/10 bg-green-500/5 hover:bg-green-500/10 hover:text-green-600 transition-all rounded-xl text-green-600" 
+                onClick={() => {
+                    if (selectedFile) handleDownload(selectedFile.name);
+                    setMenuOpen(false);
+                }}
+            >
+                <Download className="h-6 w-6" />
+                <span className="text-xs font-medium">Download</span>
+            </Button>
+
+            <Button 
+                variant="outline" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-orange-500/10 bg-orange-500/5 hover:bg-orange-500/10 hover:text-orange-600 transition-all rounded-xl text-orange-600" 
+                onClick={() => {
+                    setMenuOpen(false);
+                    setNewName(selectedFile?.name.replace(/\.txt$/, '') || '');
+                    setRenameOpen(true);
+                }}
+            >
+                <Pencil className="h-6 w-6" />
+                <span className="text-xs font-medium">Rename</span>
+            </Button>
+
+            <Button 
+                variant="outline" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-xl text-blue-600" 
                 onClick={() => {
                     setMenuOpen(false);
                     setMoveOpen(true);
                 }}
             >
-                <Move className="mr-2 h-4 w-4" /> Move
+                <Move className="h-6 w-6" />
+                <span className="text-xs font-medium">Move</span>
             </Button>
+
             <Button 
-                variant="destructive" 
-                className="w-full justify-start" 
+                variant="outline" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-destructive/10 bg-destructive/5 hover:bg-destructive/10 hover:text-destructive transition-all rounded-xl text-destructive col-span-2" 
                 onClick={() => {
                     if (selectedFile) handleDelete(selectedFile.name);
                     setMenuOpen(false);
                 }}
             >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                <Trash2 className="h-6 w-6" />
+                <span className="text-xs font-medium">Delete File</span>
             </Button>
           </div>
-          <DrawerFooter>
+          <DrawerFooter className="pt-0">
             <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="ghost" className="w-full">Cancel</Button>
             </DrawerClose>
           </DrawerFooter>
         </DrawerContent>

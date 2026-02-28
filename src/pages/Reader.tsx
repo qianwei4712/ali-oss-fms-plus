@@ -446,35 +446,37 @@ const Reader = () => {
                     <MoreVertical className="h-5 w-5" />
                 </Button>
             </DrawerTrigger>
-            <DrawerContent className={cn("text-foreground", theme)}>
-                <DrawerHeader>
+            <DrawerContent className={cn("text-foreground pb-6", theme)}>
+                <DrawerHeader className="text-left">
                     <DrawerTitle>File Actions</DrawerTitle>
                 </DrawerHeader>
-                <div className="p-4 space-y-2">
+                <div className="p-4 grid grid-cols-2 gap-3">
                     <Button 
                         variant="outline" 
-                        className="w-full justify-start" 
+                        className="flex flex-col items-center justify-center h-20 space-y-2 border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-xl text-blue-600" 
                         onClick={() => {
                             setIsActionsOpen(false);
                             setIsMoveOpen(true);
                         }}
                     >
-                        <Move className="mr-2 h-4 w-4" /> Move
+                        <Move className="h-6 w-6" />
+                        <span className="text-xs font-medium">Move File</span>
                     </Button>
                     <Button 
-                        variant="destructive" 
-                        className="w-full justify-start" 
+                        variant="outline" 
+                        className="flex flex-col items-center justify-center h-20 space-y-2 border-destructive/10 bg-destructive/5 hover:bg-destructive/10 hover:text-destructive transition-all rounded-xl text-destructive" 
                         onClick={() => {
                             setIsActionsOpen(false);
                             setIsDeleteOpen(true);
                         }}
                     >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        <Trash2 className="h-6 w-6" />
+                        <span className="text-xs font-medium">Delete File</span>
                     </Button>
                 </div>
-                <DrawerFooter>
+                <DrawerFooter className="pt-0">
                     <DrawerClose asChild>
-                        <Button variant="outline">Cancel</Button>
+                        <Button variant="ghost" className="w-full">Cancel</Button>
                     </DrawerClose>
                 </DrawerFooter>
             </DrawerContent>
