@@ -21,7 +21,7 @@ const RecycleBin = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [actionType, setActionType] = useState<'restore' | 'delete' | null>(null);
+  const [actionType, setActionType] = useState<'restore' | 'delete' | 'empty' | null>(null);
   const [selectedFile, setSelectedFile] = useState<OSSObject | null>(null);
 
   useEffect(() => {
@@ -160,6 +160,41 @@ const RecycleBin = () => {
     }
   };
 
+  const onEmptyRecycleBin = async () => {
+    if (!ossConfig) return;
+    setIsLoading(true);
+    const client = initOSSClient(ossConfig);
+    const recycleRoot = ossConfig.recyclePath || 'trash/';
+
+    try {
+      let marker: string | undefined = undefined;
+      do {
+        // @ts-ignore
+        const result = await client.list({
+          prefix: recycleRoot,
+          'max-keys': 1000,
+          marker: marker,
+        }, {});
+
+        if (result.objects && result.objects.length > 0) {
+          const keys = result.objects.map((o: any) => o.name);
+          await client.deleteMulti(keys);
+        }
+
+        // @ts-ignore
+        marker = result.nextMarker;
+      } while (marker);
+
+      toast.success('Recycle Bin emptied');
+      fetchFiles(currentPath);
+    } catch (err: any) {
+      toast.error('Failed to empty recycle bin: ' + err.message);
+      setIsLoading(false);
+    } finally {
+      setConfirmOpen(false);
+    }
+  };
+
   const trailingActions = (file: OSSObject) => (
     <TrailingActions>
       <SwipeAction
@@ -194,6 +229,17 @@ const RecycleBin = () => {
         <h1 className="font-semibold text-lg truncate flex-1">
             Recycle Bin
         </h1>
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+                setActionType('empty');
+                setConfirmOpen(true);
+            }}
+            title="Empty Recycle Bin"
+        >
+            <Trash2 className="h-5 w-5 text-red-500" />
+        </Button>
         <Button variant="ghost" size="icon" onClick={() => fetchFiles(currentPath)}>
           <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
@@ -245,22 +291,33 @@ const RecycleBin = () => {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>
-                    {actionType === 'restore' ? 'Restore File' : 'Permanently Delete'}
+                    {actionType === 'restore' 
+                        ? 'Restore File' 
+                        : actionType === 'empty' 
+                            ? 'Empty Recycle Bin' 
+                            : 'Permanently Delete'
+                    }
                 </DialogTitle>
                 <DialogDescription>
                     {actionType === 'restore' 
                         ? `Are you sure you want to restore "${selectedFile?.name}"?`
-                        : `Are you sure you want to permanently delete "${selectedFile?.name}"? This cannot be undone.`
+                        : actionType === 'empty'
+                            ? 'Are you sure you want to permanently delete all files in the Recycle Bin? This cannot be undone.'
+                            : `Are you sure you want to permanently delete "${selectedFile?.name}"? This cannot be undone.`
                     }
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
                 <Button 
-                    variant={actionType === 'delete' ? "destructive" : "default"} 
-                    onClick={actionType === 'restore' ? onRestore : onDelete}
+                    variant={actionType === 'delete' || actionType === 'empty' ? "destructive" : "default"} 
+                    onClick={() => {
+                        if (actionType === 'restore') onRestore();
+                        else if (actionType === 'empty') onEmptyRecycleBin();
+                        else onDelete();
+                    }}
                 >
-                    {actionType === 'restore' ? 'Restore' : 'Delete'}
+                    {actionType === 'restore' ? 'Restore' : actionType === 'empty' ? 'Empty' : 'Delete'}
                 </Button>
             </DialogFooter>
         </DialogContent>
