@@ -253,31 +253,31 @@ const FileManager = () => {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Top Bar */}
-      <div className="p-4 space-y-2 glass z-10 sticky top-0">
+      <div className="px-4 py-2 space-y-1.5 glass z-10 sticky top-0 border-b">
         <div className="flex items-center space-x-2">
           {currentPath && currentPath !== (ossConfig?.rootPath || '') && (
-            <Button variant="ghost" size="icon" onClick={handleBack} className="hover:bg-primary/10 hover:text-primary">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <h1 className="font-semibold text-lg truncate flex-1 tracking-tight">
+          <h1 className="font-semibold text-base truncate flex-1 tracking-tight">
             {currentPath ? (
               ossConfig?.rootPath && currentPath.startsWith(ossConfig.rootPath) 
                 ? (currentPath.replace(ossConfig.rootPath, '') || 'Home')
                 : currentPath
             ) : 'Home'}
           </h1>
-          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="hover:bg-primary/10 hover:text-primary">
-            <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input 
             placeholder="Search files..." 
-            className="pl-9 bg-muted/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-200" 
+            className="h-8 pl-8 text-sm bg-muted/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-200" 
             value={searchInputValue}
             onChange={(e) => setSearchInputValue(e.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -310,7 +310,7 @@ const FileManager = () => {
                 trailingActions={trailingActions(file.name, file.type === 'folder')}
               >
                 <div 
-                  className="w-full p-4 border-b border-border/40 bg-background flex items-center space-x-4 active:bg-muted/50 transition-colors duration-200 cursor-pointer"
+                  className="w-full px-4 py-3 border-b border-border/40 bg-background flex items-center space-x-3 active:bg-muted/50 transition-colors duration-200 cursor-pointer"
                   onClick={() => {
                       if (file.type === 'folder') {
                           if (searchQuery) {
@@ -326,23 +326,23 @@ const FileManager = () => {
                       }
                   }}
                 >
-                  <div className={`p-2.5 rounded-xl ${file.type === 'folder' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  <div className={`p-2 rounded-lg ${file.type === 'folder' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     {file.type === 'folder' ? (
-                      <Folder className="h-6 w-6" />
+                      <Folder className="h-5 w-5" />
                     ) : (
-                      <FileText className="h-6 w-6" />
+                      <FileText className="h-5 w-5" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-sm text-foreground">{file.name.split('/').pop()}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center">
+                    <p className="font-medium truncate text-[13px] text-foreground leading-tight">{file.name.split('/').pop()}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center leading-none">
                       {file.type === 'file' ? `${formatFileSize(file.size)} • ` : ''}
                       {formatDate(file.lastModified)}
-                      {searchQuery && <span className="ml-2 text-xs opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
+                      {searchQuery && <span className="ml-2 opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
                     </p>
                   </div>
-                  {file.type === 'file' && <MoreVertical className="h-4 w-4 text-muted-foreground/50" />}
-                  {file.type === 'folder' && <ChevronRight className="h-4 w-4 text-muted-foreground/30" />}
+                  {file.type === 'file' && <MoreVertical className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                  {file.type === 'folder' && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />}
                 </div>
               </SwipeableListItem>
             ))}
