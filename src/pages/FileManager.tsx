@@ -125,7 +125,9 @@ const FileManager = () => {
 
   const handleDownload = async (fileName: string) => {
     if (!ossConfig) return;
-    const key = currentPath + fileName;
+    const key = searchQuery 
+      ? (ossConfig.rootPath || '') + fileName 
+      : currentPath + fileName;
     
     try {
       toast.loading('Downloading...');
@@ -167,7 +169,10 @@ const FileManager = () => {
 
   const confirmDelete = async () => {
     if (fileToDelete) {
-      await deleteFiles([currentPath + fileToDelete]);
+      const key = searchQuery 
+        ? (ossConfig?.rootPath || '') + fileToDelete 
+        : currentPath + fileToDelete;
+      await deleteFiles([key]);
       toast.success('File deleted');
       setDeleteOpen(false);
       setFileToDelete(null);
@@ -188,7 +193,9 @@ const FileManager = () => {
     }
     
     try {
-        const oldKey = currentPath + selectedFile.name;
+        const oldKey = searchQuery 
+            ? (ossConfig?.rootPath || '') + selectedFile.name 
+            : currentPath + selectedFile.name;
         // If folder, we need to handle it differently or block renaming folders for now?
         // Renaming folders in OSS is expensive (recursive copy).
         // Let's support file rename for now.
@@ -210,7 +217,9 @@ const FileManager = () => {
     if (!selectedFile) return;
     
     try {
-        const sourceKey = currentPath + selectedFile.name;
+        const sourceKey = searchQuery 
+            ? (ossConfig?.rootPath || '') + selectedFile.name 
+            : currentPath + selectedFile.name;
         await moveFile(sourceKey, destinationPath);
         toast.success('Moved successfully');
         setMoveOpen(false);
@@ -246,29 +255,29 @@ const FileManager = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Top Bar */}
-      <div className="p-4 border-b space-y-2 bg-background z-10 sticky top-0">
+      <div className="p-4 space-y-2 glass z-10 sticky top-0">
         <div className="flex items-center space-x-2">
           {currentPath && currentPath !== (ossConfig?.rootPath || '') && (
-            <Button variant="ghost" size="icon" onClick={handleBack}>
+            <Button variant="ghost" size="icon" onClick={handleBack} className="hover:bg-primary/10 hover:text-primary">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="font-semibold text-lg truncate flex-1">
+          <h1 className="font-semibold text-lg truncate flex-1 tracking-tight">
             {currentPath ? (
               ossConfig?.rootPath && currentPath.startsWith(ossConfig.rootPath) 
                 ? (currentPath.replace(ossConfig.rootPath, '') || 'Home')
                 : currentPath
             ) : 'Home'}
           </h1>
-          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)}>
+          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="hover:bg-primary/10 hover:text-primary">
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
         <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search files..." 
-            className="pl-8" 
+            className="pl-9 bg-muted/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-200" 
             value={searchInputValue}
             onChange={(e) => setSearchInputValue(e.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -277,46 +286,38 @@ const FileManager = () => {
       </div>
 
       {/* File List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-muted/30">
         {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
-              <Skeleton key={i} className="h-16 w-full" />
+              <Skeleton key={i} className="h-16 w-full rounded-xl" />
             ))}
           </div>
         ) : error ? (
-          <div className="p-4 text-center text-red-500">{error}</div>
+          <div className="p-4 text-center text-destructive">{error}</div>
         ) : displayFiles.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">
-             {searchQuery ? 'No results found' : 'No files found'}
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
+             <div className="p-4 bg-muted rounded-full">
+                <Search className="h-8 w-8 opacity-50" />
+             </div>
+             <p>{searchQuery ? 'No results found' : 'No files found'}</p>
           </div>
         ) : (
           <SwipeableList fullSwipe={false} type={ListType.IOS}>
             {displayFiles.map((file) => (
               <SwipeableListItem
-                key={file.url || file.name} // url is unique for files, name for folders
+                key={file.url || file.name} 
                 trailingActions={trailingActions(file.name, file.type === 'folder')}
               >
                 <div 
-                  className="w-full p-4 border-b bg-background flex items-center space-x-4 active:bg-accent cursor-pointer"
+                  className="w-full p-4 border-b border-border/40 bg-background flex items-center space-x-4 active:bg-muted/50 transition-colors duration-200 cursor-pointer"
                   onClick={() => {
                       if (file.type === 'folder') {
-                          // If searching, we might need to handle full path navigation differently?
-                          // Currently handleFolderClick appends to currentPath.
-                          // If search result returns full relative path like "subdir/folder", we need to set path.
-                          // But our search logic will likely return objects.
-                          // If file.name is "subdir/folder", handleFolderClick appends it?
-                          // Standard file listing: name is "folder". currentPath is "root/". click -> "root/folder/"
-                          // Search result: name might be "sub/folder" (relative to root).
-                          // If we click it, we probably want to go INTO it.
-                          // If the name is full path relative to search root, we should just set path.
-                          
-                          // For simplicity, let's assume if searching, clicking folder jumps to that folder.
                           if (searchQuery) {
                               const fullPath = (ossConfig?.rootPath || '') + file.name + '/';
                               setCurrentPath(fullPath);
-                              setSearchQuery(''); // Clear search on navigation
-                              setSearchInputValue(''); // Clear local input
+                              setSearchQuery(''); 
+                              setSearchInputValue(''); 
                           } else {
                               handleFolderClick(file.name);
                           }
@@ -325,22 +326,23 @@ const FileManager = () => {
                       }
                   }}
                 >
-                  <div className="p-2 bg-muted rounded-full">
+                  <div className={`p-2.5 rounded-xl ${file.type === 'folder' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     {file.type === 'folder' ? (
-                      <Folder className="h-6 w-6 text-blue-500" />
+                      <Folder className="h-6 w-6" />
                     ) : (
-                      <FileText className="h-6 w-6 text-gray-500" />
+                      <FileText className="h-6 w-6" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-medium truncate text-sm text-foreground">{file.name.split('/').pop()}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center">
                       {file.type === 'file' ? `${formatFileSize(file.size)} • ` : ''}
                       {formatDate(file.lastModified)}
                       {searchQuery && <span className="ml-2 text-xs opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
                     </p>
                   </div>
-                  {file.type === 'file' && <MoreVertical className="h-4 w-4 text-muted-foreground" />}
+                  {file.type === 'file' && <MoreVertical className="h-4 w-4 text-muted-foreground/50" />}
+                  {file.type === 'folder' && <ChevronRight className="h-4 w-4 text-muted-foreground/30" />}
                 </div>
               </SwipeableListItem>
             ))}

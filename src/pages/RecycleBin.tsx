@@ -221,40 +221,48 @@ const RecycleBin = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <div className="p-4 border-b space-y-2 bg-background z-10 sticky top-0 flex items-center">
-        <Button variant="ghost" size="icon" onClick={handleBack}>
+    <div className="flex flex-col h-screen bg-muted/30">
+      <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2 shadow-sm">
+        <Button variant="ghost" size="icon" onClick={handleBack} className="hover:bg-primary/10 hover:text-primary">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="font-semibold text-lg truncate flex-1">
+        <h1 className="font-semibold text-lg truncate flex-1 tracking-tight">
             Recycle Bin
         </h1>
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-                setActionType('empty');
-                setConfirmOpen(true);
-            }}
-            title="Empty Recycle Bin"
-        >
-            <Trash2 className="h-5 w-5 text-red-500" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => fetchFiles(currentPath)}>
-          <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex items-center space-x-1">
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => {
+                    setActionType('empty');
+                    setConfirmOpen(true);
+                }}
+                title="Empty Recycle Bin"
+                className="hover:bg-destructive/10 hover:text-destructive"
+            >
+                <Trash2 className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => fetchFiles(currentPath)} className="hover:bg-primary/10 hover:text-primary">
+            <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {isLoading && files.length === 0 ? (
-           <div className="p-4 space-y-4">
-             <Skeleton className="h-16 w-full" />
-             <Skeleton className="h-16 w-full" />
+           <div className="space-y-4">
+             <Skeleton className="h-16 w-full rounded-xl" />
+             <Skeleton className="h-16 w-full rounded-xl" />
            </div>
         ) : error ? (
-           <div className="p-4 text-center text-red-500">{error}</div>
+           <div className="p-4 text-center text-destructive">{error}</div>
         ) : files.length === 0 ? (
-           <div className="p-4 text-center text-muted-foreground">Recycle Bin is empty</div>
+           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
+              <div className="p-4 bg-muted rounded-full">
+                 <Trash2 className="h-8 w-8 opacity-50" />
+              </div>
+              <p>Recycle Bin is empty</p>
+           </div>
         ) : (
            <SwipeableList fullSwipe={false} type={ListType.IOS}>
              {files.map(file => (
@@ -263,19 +271,19 @@ const RecycleBin = () => {
                     trailingActions={trailingActions(file)}
                 >
                     <div 
-                        className="w-full p-4 border-b bg-background flex items-center space-x-4 active:bg-accent"
+                        className="w-full p-4 border border-border/50 bg-card rounded-xl flex items-center space-x-4 active:scale-[0.98] transition-all duration-200 shadow-sm"
                         onClick={() => file.type === 'folder' ? handleFolderClick(file.name) : null}
                     >
-                        <div className="p-2 bg-muted rounded-full">
+                        <div className={`p-2.5 rounded-xl ${file.type === 'folder' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                             {file.type === 'folder' ? (
-                                <Folder className="h-6 w-6 text-gray-500" />
+                                <Folder className="h-6 w-6" />
                             ) : (
-                                <FileText className="h-6 w-6 text-gray-400" />
+                                <FileText className="h-6 w-6" />
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="font-medium truncate text-foreground">{file.name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
                                 {file.type === 'file' ? `${formatFileSize(file.size)} • ` : ''}
                                 {formatDate(file.lastModified)}
                             </p>

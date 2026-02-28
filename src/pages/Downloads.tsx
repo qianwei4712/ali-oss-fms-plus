@@ -62,30 +62,38 @@ const Downloads = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] p-4">
-      <h1 className="text-2xl font-bold mb-4">Downloads</h1>
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-muted/30">
+      <div className="p-4 glass sticky top-0 z-10 flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight">Downloads</h1>
+        <div className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-full">
+            {files.length} items
+        </div>
+      </div>
       
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {isLoading ? (
-          [1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)
+          [1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
         ) : files.length === 0 ? (
-          <div className="text-center text-muted-foreground mt-10">
-            No downloaded files.
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
+             <div className="p-4 bg-muted rounded-full">
+                <FileText className="h-8 w-8 opacity-50" />
+             </div>
+             <p>No downloaded files</p>
           </div>
         ) : (
           files.map((file) => (
             <div 
               key={file.key} 
-              className="border rounded-lg p-4 flex items-center justify-between bg-card active:bg-accent"
+              className="group border border-border/50 rounded-xl p-4 flex items-center justify-between bg-card hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.99]"
               onClick={() => handleOpen(file.key)}
             >
-              <div className="flex items-center space-x-4 overflow-hidden">
-                <div className="p-2 bg-muted rounded-full">
-                  <FileText className="h-6 w-6 text-gray-500" />
+              <div className="flex items-center space-x-4 overflow-hidden flex-1">
+                <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                  <FileText className="h-6 w-6" />
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate text-foreground">{file.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {formatFileSize(file.size)} • {formatDate(file.downloadTime)}
                   </p>
                 </div>
@@ -93,7 +101,7 @@ const Downloads = () => {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-destructive"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2"
                 onClick={(e) => handleDelete(file.key, e)}
               >
                 <Trash2 className="h-5 w-5" />

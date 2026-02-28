@@ -73,15 +73,16 @@ const OSSConfig = () => {
   };
 
   return (
-    <div className="container max-w-md mx-auto p-4 space-y-6 pb-24">
-      <div className="flex items-center space-x-2 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
+    <div className="flex flex-col min-h-screen bg-muted/30 pb-24">
+      <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} className="hover:bg-primary/10 hover:text-primary">
           <ArrowLeft className="h-6 w-6" />
         </Button>
-        <h1 className="text-2xl font-bold">OSS Configuration</h1>
+        <h1 className="text-xl font-bold tracking-tight">OSS Configuration</h1>
       </div>
 
-      <Card>
+      <div className="p-4 space-y-6">
+        <Card className="border-border/50 shadow-sm rounded-xl">
         <CardHeader>
           <CardTitle>Credentials & Paths</CardTitle>
           <CardDescription>
@@ -163,6 +164,7 @@ const OSSConfig = () => {
           </Button>
         </CardContent>
       </Card>
+      </div>
 
       <Dialog open={showCorsHelp} onOpenChange={setShowCorsHelp}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">

@@ -31,84 +31,86 @@ const Settings = () => {
 
   const MenuItem = ({ icon: Icon, title, onClick, destructive = false }: any) => (
     <div 
-        className={`flex items-center p-4 bg-card rounded-lg border cursor-pointer hover:bg-accent ${destructive ? 'text-red-500' : ''}`}
+        className={`flex items-center p-4 bg-card rounded-xl border border-border/50 cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 active:scale-[0.98] ${destructive ? 'text-destructive hover:bg-destructive/5' : 'text-foreground'}`}
         onClick={onClick}
     >
-        <div className="p-2 bg-muted rounded-full mr-4">
+        <div className={`p-2.5 rounded-xl mr-4 ${destructive ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
             <Icon className="h-5 w-5" />
         </div>
         <span className="flex-1 font-medium">{title}</span>
-        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
     </div>
   );
 
   return (
-    <div className="container max-w-md mx-auto p-4 space-y-6 pb-24">
-      <div className="flex items-center space-x-2 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+    <div className="flex flex-col min-h-screen bg-muted/30 pb-24">
+      <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="hover:bg-primary/10 hover:text-primary">
           <ArrowLeft className="h-6 w-6" />
         </Button>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-xl font-bold tracking-tight">Settings</h1>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">General</h2>
-        <MenuItem 
-            icon={SettingsIcon} 
-            title="OSS Configuration" 
-            onClick={() => navigate('/settings/oss')} 
-        />
-        <MenuItem 
-            icon={Archive} 
-            title="Recycle Bin" 
-            onClick={() => navigate('/settings/recycle')} 
-        />
-      </div>
+      <div className="p-4 space-y-6">
+        <div className="space-y-3">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">General</h2>
+          <MenuItem 
+              icon={SettingsIcon} 
+              title="OSS Configuration" 
+              onClick={() => navigate('/settings/oss')} 
+          />
+          <MenuItem 
+              icon={Archive} 
+              title="Recycle Bin" 
+              onClick={() => navigate('/settings/recycle')} 
+          />
+        </div>
 
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Appearance</h2>
-        <Card>
-            <CardContent className="p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                    <Sun className="h-4 w-4" />
-                    <Label>Light</Label>
-                    </div>
-                    <Switch checked={theme === 'light'} onCheckedChange={() => setTheme('light')} />
-                </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                    <Moon className="h-4 w-4" />
-                    <Label>Dark</Label>
-                    </div>
-                    <Switch checked={theme === 'dark'} onCheckedChange={() => setTheme('dark')} />
-                </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                    <Eye className="h-4 w-4" />
-                    <Label>Sepia</Label>
-                    </div>
-                    <Switch checked={theme === 'sepia'} onCheckedChange={() => setTheme('sepia')} />
-                </div>
-            </CardContent>
-        </Card>
-      </div>
+        <div className="space-y-3">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">Appearance</h2>
+          <Card className="border-border/50 shadow-sm rounded-xl">
+              <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                      <Sun className="h-4 w-4" />
+                      <Label>Light</Label>
+                      </div>
+                      <Switch checked={theme === 'light'} onCheckedChange={() => setTheme('light')} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                      <Moon className="h-4 w-4" />
+                      <Label>Dark</Label>
+                      </div>
+                      <Switch checked={theme === 'dark'} onCheckedChange={() => setTheme('dark')} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                      <Eye className="h-4 w-4" />
+                      <Label>Sepia</Label>
+                      </div>
+                      <Switch checked={theme === 'sepia'} onCheckedChange={() => setTheme('sepia')} />
+                  </div>
+              </CardContent>
+          </Card>
+        </div>
 
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Storage</h2>
-        <MenuItem 
-            icon={Database} 
-            title="Clear Local Cache" 
-            onClick={handleClearCache} 
-        />
-        {ossConfig && (
-            <MenuItem 
-                icon={Trash2} 
-                title="Reset Configuration" 
-                onClick={handleReset} 
-                destructive
-            />
-        )}
+        <div className="space-y-3">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">Storage</h2>
+          <MenuItem 
+              icon={Database} 
+              title="Clear Local Cache" 
+              onClick={handleClearCache} 
+          />
+          {ossConfig && (
+              <MenuItem 
+                  icon={Trash2} 
+                  title="Reset Configuration" 
+                  onClick={handleReset} 
+                  destructive
+              />
+          )}
+        </div>
       </div>
     </div>
   );
