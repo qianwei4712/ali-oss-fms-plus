@@ -317,7 +317,7 @@ const Reader = () => {
   const currentChapterTitle = chapters[currentChapterIndex]?.title || '';
 
   return (
-    <div className={cn("relative h-screen w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
+    <div className={cn("relative h-[100dvh] w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn(
         "absolute top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
@@ -488,7 +488,7 @@ const Reader = () => {
         ref={scrollRef}
         onScroll={handleScroll}
         onClick={() => setShowControls(!showControls)}
-        className="h-full w-full overflow-y-auto whitespace-pre-wrap leading-relaxed outline-none p-4 pb-20 pt-20"
+        className="h-full w-full overflow-y-auto whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
         style={{ fontSize: `${fontSize}px` }}
       >
         {isLoading ? (
@@ -528,10 +528,10 @@ const Reader = () => {
       {/* Progress Footer */}
       {!isLoading && (
         <div className={cn(
-            "absolute bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur border-t flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
+            "absolute bottom-0 left-0 right-0 min-h-16 h-auto pb-[env(safe-area-inset-bottom)] bg-background/95 backdrop-blur border-t flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
             showControls ? "translate-y-0" : "translate-y-full"
         )}>
-            <span className="text-xs text-muted-foreground w-12 text-right mr-4 font-mono">
+            <span className="text-xs text-muted-foreground w-12 text-right mr-4 font-mono select-none">
                 {Math.round(scrollProgress)}%
             </span>
             <Slider
@@ -539,7 +539,7 @@ const Reader = () => {
                 max={100}
                 step={1}
                 onValueChange={handleProgressChange}
-                className="flex-1 cursor-pointer"
+                className="flex-1 cursor-pointer py-4"
             />
         </div>
       )}
