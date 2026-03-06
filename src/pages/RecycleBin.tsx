@@ -203,9 +203,10 @@ const RecycleBin = () => {
             setActionType('restore');
             setConfirmOpen(true);
         }}
-        className="bg-blue-500 flex items-center justify-center px-4"
       >
-        <RotateCcw className="text-white" />
+        <div className="bg-blue-500 flex items-center justify-center px-4 h-full">
+          <RotateCcw className="text-white" />
+        </div>
       </SwipeAction>
       <SwipeAction
         onClick={() => {
@@ -213,9 +214,10 @@ const RecycleBin = () => {
             setActionType('delete');
             setConfirmOpen(true);
         }}
-        className="bg-red-600 flex items-center justify-center px-4"
       >
-        <Trash2 className="text-white" />
+        <div className="bg-red-600 flex items-center justify-center px-4 h-full">
+          <Trash2 className="text-white" />
+        </div>
       </SwipeAction>
     </TrailingActions>
   );
