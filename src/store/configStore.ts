@@ -6,8 +6,12 @@ import { encrypt, decrypt } from '@/utils/crypto';
 interface ConfigState {
   ossConfig: OSSConfig | null;
   theme: 'light' | 'dark' | 'sepia';
+  filenameCleanPatterns: string[];
   setOssConfig: (config: OSSConfig) => void;
   setTheme: (theme: 'light' | 'dark' | 'sepia') => void;
+  setFilenameCleanPatterns: (patterns: string[]) => void;
+  addFilenameCleanPattern: (pattern: string) => void;
+  removeFilenameCleanPattern: (pattern: string) => void;
   clearConfig: () => void;
 }
 
@@ -41,6 +45,7 @@ export const useConfigStore = create<ConfigState>()(
     (set) => ({
       ossConfig: null,
       theme: 'light',
+      filenameCleanPatterns: [],
       setOssConfig: (config) => set({ ossConfig: config }),
       setTheme: (theme) => {
         set({ theme });
@@ -55,7 +60,10 @@ export const useConfigStore = create<ConfigState>()(
            root.classList.add(theme);
         }
       },
-      clearConfig: () => set({ ossConfig: null }),
+      setFilenameCleanPatterns: (patterns) => set({ filenameCleanPatterns: patterns }),
+      addFilenameCleanPattern: (pattern) => set((state) => ({ filenameCleanPatterns: [...state.filenameCleanPatterns, pattern] })),
+      removeFilenameCleanPattern: (pattern) => set((state) => ({ filenameCleanPatterns: state.filenameCleanPatterns.filter((p) => p !== pattern) })),
+      clearConfig: () => set({ ossConfig: null, filenameCleanPatterns: [] }),
     }),
     {
       name: 'oss-fms-config',

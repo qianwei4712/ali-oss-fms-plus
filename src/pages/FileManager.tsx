@@ -21,7 +21,8 @@ import {
   Move, 
   Eye,
   MoreVertical,
-  ChevronRight
+  ChevronRight,
+  Eraser
 } from 'lucide-react';
 import { SwipeableList, SwipeableListItem, SwipeAction, TrailingActions, Type as ListType } from 'react-swipeable-list';
 import 'react-swipeable-list/dist/styles.css';
@@ -48,7 +49,7 @@ import { FolderPicker } from '@/components/FolderPicker';
 
 const FileManager = () => {
   const navigate = useNavigate();
-  const { ossConfig } = useConfigStore();
+  const { ossConfig, filenameCleanPatterns } = useConfigStore();
   const { 
     currentPath, 
     files, 
@@ -176,6 +177,27 @@ const FileManager = () => {
       toast.success('File deleted');
       setDeleteOpen(false);
       setFileToDelete(null);
+    }
+  };
+
+  const handleAutoClean = () => {
+    if (!filenameCleanPatterns || filenameCleanPatterns.length === 0) {
+      toast.info('No cleaning patterns configured');
+      return;
+    }
+    
+    let cleanedName = newName;
+    let originalName = newName;
+    
+    filenameCleanPatterns.forEach(pattern => {
+      cleanedName = cleanedName.split(pattern).join('');
+    });
+    
+    if (cleanedName !== originalName) {
+      setNewName(cleanedName);
+      toast.success('Filename cleaned');
+    } else {
+      toast.info('No matching patterns found');
     }
   };
 
@@ -442,11 +464,21 @@ const FileManager = () => {
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                     <Label htmlFor="name">New Name</Label>
-                    <Input 
-                        id="name" 
-                        value={newName} 
-                        onChange={(e) => setNewName(e.target.value)} 
-                    />
+                    <div className="flex space-x-2">
+                        <Input 
+                            id="name" 
+                            value={newName} 
+                            onChange={(e) => setNewName(e.target.value)} 
+                        />
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            title="Auto Clean"
+                            onClick={handleAutoClean}
+                        >
+                            <Eraser className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
             </div>
             <DialogFooter>

@@ -4,6 +4,7 @@ import { useConfigStore } from '@/store/configStore';
 import FileManager from '@/pages/FileManager';
 import Settings from '@/pages/Settings';
 import OSSConfig from '@/pages/OSSConfig';
+import FilenameCleanConfig from '@/pages/FilenameCleanConfig';
 import RecycleBin from '@/pages/RecycleBin';
 import Reader from '@/pages/Reader';
 import Downloads from '@/pages/Downloads';
@@ -39,6 +40,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/settings/oss" element={<OSSConfig />} />
+        <Route path="/settings/filename-clean" element={<FilenameCleanConfig />} />
         <Route path="/settings/recycle" element={<RecycleBin />} />
         <Route path="/reader/:path" element={<Reader />} />
       </Routes>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Settings as SettingsIcon, Trash2, Sun, Moon, Eye, ChevronRight, Database, Archive } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Trash2, Sun, Moon, Eye, ChevronRight, Database, Archive, Eraser } from 'lucide-react';
 import { fileCacheStore, downloadedTxtStore } from '@/utils/storage';
 import { toast } from 'sonner';
 
@@ -63,6 +63,11 @@ const Settings = () => {
               icon={Archive} 
               title="Recycle Bin" 
               onClick={() => navigate('/settings/recycle')} 
+          />
+          <MenuItem 
+              icon={Eraser} 
+              title="Filename Cleaning" 
+              onClick={() => navigate('/settings/filename-clean')} 
           />
         </div>
 
