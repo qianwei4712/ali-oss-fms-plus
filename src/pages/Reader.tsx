@@ -538,7 +538,7 @@ const Reader = () => {
         ref={scrollRef}
         onScroll={handleScroll}
         onClick={() => setShowControls(!showControls)}
-        className="h-full w-full overflow-y-auto whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
+        className="h-full w-full overflow-y-auto overflow-x-hidden break-words overscroll-x-none touch-pan-y whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
         style={{ fontSize: `${fontSize}px` }}
       >
         {isLoading ? (

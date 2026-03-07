@@ -62,7 +62,7 @@ const Downloads = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-muted/30">
+    <div className="flex flex-col h-full bg-muted/30">
       <div className="p-4 glass sticky top-0 z-10 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">Downloads</h1>
         <div className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-full">
@@ -70,7 +70,7 @@ const Downloads = () => {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
         {isLoading ? (
           [1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
         ) : files.length === 0 ? (
