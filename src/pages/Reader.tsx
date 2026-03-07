@@ -13,7 +13,7 @@ import { FolderPicker } from '@/components/FolderPicker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine, Sparkles } from 'lucide-react';
 import chardet from 'chardet';
 import { cn } from '@/lib/utils';
 
@@ -30,8 +30,8 @@ const Reader = () => {
   const [searchParams] = useSearchParams();
   const isOffline = searchParams.get('offline') === 'true';
   const navigate = useNavigate();
-  const { ossConfig } = useConfigStore();
-  const { deleteFiles, moveFile } = useFileStore();
+  const { ossConfig, filenameCleanPatterns } = useConfigStore();
+  const { deleteFiles, moveFile, renameFile } = useFileStore();
   const { theme: globalTheme } = useTheme();
   
   const [content, setContent] = useState('');
@@ -51,6 +51,8 @@ const Reader = () => {
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Progress restoration state
@@ -93,7 +95,13 @@ const Reader = () => {
     if (!path) return;
     try {
         const key = decodeURIComponent(path);
-        await deleteFiles([key]);
+        
+        if (!isOffline) {
+            await deleteFiles([key]);
+        }
+        
+        await downloadedTxtStore.removeItem(key);
+        
         toast.success('File deleted');
         navigate(-1);
     } catch (e: any) {
@@ -114,6 +122,31 @@ const Reader = () => {
         navigate(-1);
     } catch (e: any) {
         toast.error('Failed to move file: ' + e.message);
+    }
+  };
+
+  const handleRename = async () => {
+    if (!path || !renameValue.trim()) return;
+    try {
+        const key = decodeURIComponent(path);
+        const newName = renameValue.trim();
+        await renameFile(key, newName);
+        toast.success('File renamed');
+        setIsRenameOpen(false);
+        setIsActionsOpen(false);
+        
+        // Construct the new path
+        const pathParts = key.split('/');
+        pathParts.pop();
+        const newKey = pathParts.length > 0 ? `${pathParts.join('/')}/${newName}` : newName;
+        
+        // Navigate to new reader path
+        // We use replace to update the URL without adding a new history entry if we want, 
+        // but here maybe pushing is fine? No, replace is better for renaming.
+        // However, Reader component depends on path param.
+        navigate(`/reader/${encodeURIComponent(newKey)}`, { replace: true });
+    } catch (e: any) {
+        toast.error('Failed to rename file: ' + e.message);
     }
   };
 
@@ -450,7 +483,24 @@ const Reader = () => {
                 <DrawerHeader className="text-left">
                     <DrawerTitle>File Actions</DrawerTitle>
                 </DrawerHeader>
-                <div className="p-4 grid grid-cols-2 gap-3">
+                <div className="p-4 grid grid-cols-3 gap-3">
+                    <Button 
+                        variant="outline" 
+                        className="flex flex-col items-center justify-center h-20 space-y-2 border-primary/10 bg-primary/5 hover:bg-primary/10 hover:text-primary transition-all rounded-xl text-primary" 
+                        onClick={() => {
+                            setIsActionsOpen(false);
+                            // Set initial value for rename
+                            if (path) {
+                                const key = decodeURIComponent(path);
+                                const fileName = key.split('/').pop() || '';
+                                setRenameValue(fileName);
+                            }
+                            setIsRenameOpen(true);
+                        }}
+                    >
+                        <FilePenLine className="h-6 w-6" />
+                        <span className="text-xs font-medium">Rename</span>
+                    </Button>
                     <Button 
                         variant="outline" 
                         className="flex flex-col items-center justify-center h-20 space-y-2 border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-xl text-blue-600" 
@@ -460,7 +510,7 @@ const Reader = () => {
                         }}
                     >
                         <Move className="h-6 w-6" />
-                        <span className="text-xs font-medium">Move File</span>
+                        <span className="text-xs font-medium">Move</span>
                     </Button>
                     <Button 
                         variant="outline" 
@@ -471,7 +521,7 @@ const Reader = () => {
                         }}
                     >
                         <Trash2 className="h-6 w-6" />
-                        <span className="text-xs font-medium">Delete File</span>
+                        <span className="text-xs font-medium">Delete</span>
                     </Button>
                 </div>
                 <DrawerFooter className="pt-0">
@@ -543,6 +593,52 @@ const Reader = () => {
             />
         </div>
       )}
+
+      {/* Rename Dialog */}
+      <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Rename File</DialogTitle>
+                <DialogDescription>Enter a new name for the file.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-3">
+                <div className="flex space-x-2">
+                    <Input 
+                        className="flex-1"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        placeholder="New filename"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleRename();
+                            }
+                        }}
+                    />
+                    {filenameCleanPatterns && filenameCleanPatterns.length > 0 && (
+                        <Button 
+                            variant="secondary" 
+                            size="icon"
+                            onClick={() => {
+                                let newValue = renameValue;
+                                filenameCleanPatterns.forEach(p => {
+                                    newValue = newValue.replaceAll(p, '');
+                                });
+                                setRenameValue(newValue);
+                                toast.success('Applied clean patterns');
+                            }}
+                            title="Auto Clean Filename"
+                        >
+                            <Sparkles className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsRenameOpen(false)}>Cancel</Button>
+                <Button onClick={handleRename}>Rename</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Move Dialog */}
       <Dialog open={isMoveOpen} onOpenChange={setIsMoveOpen}>
