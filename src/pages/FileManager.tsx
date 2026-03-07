@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
 import { downloadedTxtStore, DownloadedFile } from '@/utils/storage';
-import { initOSSClient, getParentPath, OSSObject } from '@/utils/oss';
+import { initOSSClient, getParentPath, OSSObject, OSSConfig } from '@/utils/oss';
 import { formatFileSize, formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,44 @@ import {
 import { Label } from "@/components/ui/label";
 
 import { FolderPicker } from '@/components/FolderPicker';
+
+// Memoized File Row Component
+const FileRow = memo(({ 
+  file, 
+  onClick, 
+  searchQuery, 
+  isFolder 
+}: { 
+  file: OSSObject; 
+  onClick: () => void; 
+  searchQuery: string;
+  isFolder: boolean;
+}) => (
+  <div 
+    className="w-full px-4 py-3 border-b border-border/40 bg-background flex items-center space-x-3 active:bg-muted/50 transition-colors duration-200 cursor-pointer"
+    onClick={onClick}
+  >
+    <div className={`p-2 rounded-lg ${isFolder ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+      {isFolder ? (
+        <Folder className="h-5 w-5" />
+      ) : (
+        <FileText className="h-5 w-5" />
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="font-medium truncate text-[13px] text-foreground leading-tight">{file.name.split('/').pop()}</p>
+      <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center leading-none">
+        {!isFolder ? `${formatFileSize(file.size)} • ` : ''}
+        {formatDate(file.lastModified)}
+        {searchQuery && <span className="ml-2 opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
+      </p>
+    </div>
+    {!isFolder && <MoreVertical className="h-3.5 w-3.5 text-muted-foreground/50" />}
+    {isFolder && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />}
+  </div>
+));
+
+FileRow.displayName = 'FileRow';
 
 const FileManager = () => {
   const navigate = useNavigate();
@@ -300,6 +338,21 @@ const FileManager = () => {
     </TrailingActions>
   );
 
+  const handleItemClick = useCallback((file: OSSObject) => {
+    if (file.type === 'folder') {
+        if (searchQuery) {
+            const fullPath = (ossConfig?.rootPath || '') + file.name + '/';
+            setCurrentPath(fullPath);
+            setSearchQuery(''); 
+            setSearchInputValue(''); 
+        } else {
+            handleFolderClick(file.name);
+        }
+    } else {
+        handleFileClick(file);
+    }
+  }, [searchQuery, ossConfig, currentPath, setCurrentPath, setSearchQuery]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Top Bar */}
@@ -357,41 +410,12 @@ const FileManager = () => {
                 key={file.url || file.name} 
                 trailingActions={trailingActions(file.name, file.type === 'folder')}
               >
-                <div 
-                  className="w-full px-4 py-3 border-b border-border/40 bg-background flex items-center space-x-3 active:bg-muted/50 transition-colors duration-200 cursor-pointer"
-                  onClick={() => {
-                      if (file.type === 'folder') {
-                          if (searchQuery) {
-                              const fullPath = (ossConfig?.rootPath || '') + file.name + '/';
-                              setCurrentPath(fullPath);
-                              setSearchQuery(''); 
-                              setSearchInputValue(''); 
-                          } else {
-                              handleFolderClick(file.name);
-                          }
-                      } else {
-                          handleFileClick(file);
-                      }
-                  }}
-                >
-                  <div className={`p-2 rounded-lg ${file.type === 'folder' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                    {file.type === 'folder' ? (
-                      <Folder className="h-5 w-5" />
-                    ) : (
-                      <FileText className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-[13px] text-foreground leading-tight">{file.name.split('/').pop()}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center leading-none">
-                      {file.type === 'file' ? `${formatFileSize(file.size)} • ` : ''}
-                      {formatDate(file.lastModified)}
-                      {searchQuery && <span className="ml-2 opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
-                    </p>
-                  </div>
-                  {file.type === 'file' && <MoreVertical className="h-3.5 w-3.5 text-muted-foreground/50" />}
-                  {file.type === 'folder' && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />}
-                </div>
+                <FileRow 
+                    file={file} 
+                    onClick={() => handleItemClick(file)}
+                    searchQuery={searchQuery}
+                    isFolder={file.type === 'folder'}
+                />
               </SwipeableListItem>
             ))}
           </SwipeableList>

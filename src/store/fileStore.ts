@@ -231,8 +231,36 @@ export const useFileStore = create<FileState>((set, get) => ({
      
      const rootPath = ossConfig.rootPath || '';
      const recyclePath = ossConfig.recyclePath || 'trash/';
+     const { currentPath, files, searchResults, isSearching } = get();
 
-     set({ isLoading: true });
+     // Optimistic Update
+     const previousFiles = files;
+     const previousSearchResults = searchResults;
+
+     const effectivePath = currentPath || rootPath;
+
+     // Helper to check if a file in state matches one of the keys to delete
+     const shouldRemove = (file: OSSObject, isSearchResult: boolean) => {
+         // If search result, file.name is relative to rootPath
+         // If normal file, file.name is relative to currentPath
+         const fullPath = isSearchResult 
+            ? (rootPath + file.name)
+            : (effectivePath + file.name);
+         
+         // Handle folder slash
+         const normalizedFullPath = file.type === 'folder' && !fullPath.endsWith('/') 
+            ? fullPath + '/' 
+            : fullPath;
+            
+         return keys.includes(normalizedFullPath) || keys.includes(fullPath);
+     };
+
+     set({
+         files: files.filter(f => !shouldRemove(f, false)),
+         searchResults: searchResults.filter(f => !shouldRemove(f, true)),
+         selectedFiles: []
+     });
+
      try {
        const client = initOSSClient(ossConfig);
        
@@ -240,46 +268,32 @@ export const useFileStore = create<FileState>((set, get) => ({
          // Determine destination key in recycle bin
          let destinationKey = '';
          
-         // If key starts with rootPath, replace it with recyclePath
          if (rootPath && key.startsWith(rootPath)) {
             destinationKey = key.replace(rootPath, recyclePath);
          } else {
-            // Fallback: just prepend recyclePath or assume relative?
-            // If key is "some/file.txt" and rootPath is empty.
-            // recyclePath is "trash/".
-            // dest -> "trash/some/file.txt".
-            // If key is "normal/file.txt" and rootPath is "normal/".
-            // recyclePath is "recycle/".
-            // dest -> "recycle/file.txt".
             destinationKey = recyclePath + key;
          }
 
-         // Ensure destination ends with / if it's a folder (copy won't handle folder implicitly but OSS handles objects)
-         // But here we are deleting files (objects).
-         // If "key" is a folder prefix (OSS fake folder), we need to handle all children.
-         // Current deleteFiles implementation seems to assume "keys" are file objects or it deletes individual objects.
-         // If user selects a folder, "keys" might contain just the folder prefix? 
-         // The UI passes `currentPath + fileName`. If it's a folder, it ends with '/'.
-         // If it is a folder, we need to list all children and move them?
-         // The current implementation of deleteFiles:
-         // "Move to Trash" logic: rename to trash/original_key
-         // The original code was: `const trashKey = trash/${key};`
-         // It implies simple renaming.
-         
-         // Fix for path joining slashes
          destinationKey = destinationKey.replace('//', '/');
 
-         // Copy
          await client.copy(destinationKey, key);
-         // Delete
          await client.delete(key);
        }
        
-       set({ isLoading: false, selectedFiles: [] });
-       get().fetchFiles(true); // Refresh
+       // Success - state is already updated. 
+       // Optionally trigger a background refresh to ensure consistency, 
+       // but strictly not necessary if we trust the logic.
+       // get().fetchFiles(false); 
        
      } catch (err: any) {
-       set({ isLoading: false, error: err.message });
+       // Revert
+       set({ 
+           files: previousFiles, 
+           searchResults: previousSearchResults,
+           error: err.message 
+       });
+       // Force refresh to be safe
+       get().fetchFiles(true);
      }
   },
   
@@ -307,21 +321,66 @@ export const useFileStore = create<FileState>((set, get) => ({
 
     // oldKey is full path: "folder/old.txt"
     // newName is just name: "new.txt"
-    // We need to keep the folder path
     const pathParts = oldKey.split('/');
-    pathParts.pop(); // Remove old filename
+    pathParts.pop(); 
     const folderPath = pathParts.join('/');
     const newKey = folderPath ? `${folderPath}/${newName}` : newName;
 
-    set({ isLoading: true });
+    const { files, searchResults } = get();
+    const previousFiles = files;
+    const previousSearchResults = searchResults;
+
+    // Optimistic Update
+    const updateFile = (list: OSSObject[], isSearchResult: boolean) => {
+        return list.map(f => {
+             const rootPath = ossConfig.rootPath || '';
+             // If search result, name is relative to root. oldKey is full path (root+name).
+             // If normal file, name is relative to currentPath. oldKey is full path.
+             // It's easier to check if oldKey ends with f.name (loose check) or reconstruct.
+             
+             // Let's use exact match logic similar to delete
+             // But here we know oldKey.
+             
+             // Construct what the full path of 'f' would be
+             let fFullPath = '';
+             if (isSearchResult) {
+                 fFullPath = rootPath + f.name;
+             } else {
+                 const effectivePath = get().currentPath || rootPath;
+                 fFullPath = effectivePath + f.name;
+             }
+             
+             if (fFullPath === oldKey) {
+                 // Found it. Update name.
+                 // For display name (f.name), we need to replace the filename part.
+                 const parts = f.name.split('/');
+                 parts.pop(); // remove old name
+                 const newRelativeName = parts.length > 0 ? parts.join('/') + '/' + newName : newName;
+                 return { ...f, name: newRelativeName };
+             }
+             return f;
+        });
+    };
+
+    set({
+        files: updateFile(files, false),
+        searchResults: updateFile(searchResults, true),
+        isLoading: true // Keep loading true to show activity indicator if needed, or remove for pure optimistic
+    });
+
     try {
       const client = initOSSClient(ossConfig);
       await client.copy(newKey, oldKey);
       await client.delete(oldKey);
       set({ isLoading: false });
-      get().fetchFiles(true);
+      // get().fetchFiles(true); // No need to refresh if optimistic worked
     } catch (err: any) {
-      set({ isLoading: false, error: err.message });
+      set({ 
+          files: previousFiles, 
+          searchResults: previousSearchResults,
+          isLoading: false, 
+          error: err.message 
+      });
       throw err;
     }
   },
@@ -330,25 +389,55 @@ export const useFileStore = create<FileState>((set, get) => ({
     const { ossConfig } = useConfigStore.getState();
     if (!ossConfig) return;
 
-    // sourceKey: "folder/file.txt"
-    // destinationPath: "other/folder/"
     const fileName = sourceKey.split('/').pop();
     if (!fileName) return;
 
     const newKey = destinationPath + fileName;
-    
-    // Check if moving to same location
     if (sourceKey === newKey) return;
 
-    set({ isLoading: true });
+    const { files, searchResults } = get();
+    const previousFiles = files;
+    const previousSearchResults = searchResults;
+
+    // Optimistic: Remove from current list (since it moved)
+    // Note: If we are in search results, we should technically update the path, not remove it?
+    // But usually move implies it goes somewhere else.
+    // If I move "a.txt" to "sub/a.txt", and I am searching for "a", it should still show up but with new path?
+    // For simplicity, let's remove it from view or update it.
+    // Given the UI doesn't support live update of search paths easily, removing it is safer to avoid broken links.
+    
+    // Logic: Remove from current view
+    const shouldRemove = (f: OSSObject, isSearchResult: boolean) => {
+         const rootPath = ossConfig.rootPath || '';
+         let fFullPath = '';
+         if (isSearchResult) {
+             fFullPath = rootPath + f.name;
+         } else {
+             const effectivePath = get().currentPath || rootPath;
+             fFullPath = effectivePath + f.name;
+         }
+         return fFullPath === sourceKey;
+    };
+
+    set({
+        files: files.filter(f => !shouldRemove(f, false)),
+        searchResults: searchResults.filter(f => !shouldRemove(f, true)),
+        isLoading: true 
+    });
+
     try {
       const client = initOSSClient(ossConfig);
       await client.copy(newKey, sourceKey);
       await client.delete(sourceKey);
       set({ isLoading: false });
-      get().fetchFiles(true);
+      // get().fetchFiles(true);
     } catch (err: any) {
-      set({ isLoading: false, error: err.message });
+      set({ 
+          files: previousFiles, 
+          searchResults: previousSearchResults,
+          isLoading: false, 
+          error: err.message 
+      });
       throw err;
     }
   }
