@@ -453,7 +453,7 @@ const FileManager = () => {
       <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
         <DrawerContent>
           <DrawerHeader className="text-left">
-            <DrawerTitle className="truncate">{selectedFile?.name.split('/').pop()}</DrawerTitle>
+            <DrawerTitle className="whitespace-normal break-all">{selectedFile?.name.split('/').pop()}</DrawerTitle>
           </DrawerHeader>
           <div className="p-4 grid grid-cols-2 gap-3">
             <Button 
