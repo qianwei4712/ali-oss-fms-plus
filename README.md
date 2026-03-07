@@ -18,12 +18,16 @@ Ali OSS FMS Plus 是一个基于 React + Vite + TypeScript 构建的阿里云 OS
 - 📖 **离线阅读模式**: 支持下载 `.txt` 文件到本地存储，随时随地离线阅读。
 - 🔐 **安全可靠**: 所有的阿里云 OSS 密钥均存储在您的本地浏览器中，不会上传到任何服务器。
 - 🧊 **磨砂玻璃效果**: 现代化的 UI 设计，带有背景模糊和优雅的过渡动画。
+- 🧹 **文件名净化**: 预设文件名清理规则，在重命名文件时一键移除多余字符（如广告标签）。
+- ⬇️ **下载管理**: 集中管理已下载的离线文件，支持按时间排序、快速阅读及删除。
+- ⚙️ **高级设置**: 提供缓存清理、配置重置、多主题切换及 OSS 参数管理。
 
 ## 🛠️ 技术栈
 
 - **开发工具**: **[Trae IDE](https://www.trae.ai/)** (由 ByteDance 开发的 AI 驱动型 IDE)
 - **开发方式**: **100% AI 对话驱动开发**。本项目全流程由 AI 协助完成，包括架构设计、UI 样式重构、功能实现及文档编写。
 - **框架**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **路由**: [React Router](https://reactrouter.com/)
 - **语言**: [TypeScript](https://www.typescriptlang.org/)
 - **样式**: [Tailwind CSS](https://tailwindcss.com/)
 - **组件库**: [Shadcn UI](https://ui.shadcn.com/) (基于 Radix UI)
