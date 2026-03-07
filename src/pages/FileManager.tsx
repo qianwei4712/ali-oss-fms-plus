@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
@@ -63,7 +63,9 @@ const FileManager = () => {
     searchQuery,
     setSearchQuery,
     searchResults,
-    isSearching
+    isSearching,
+    hasMore,
+    loadMore
   } = useFileStore();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -75,6 +77,28 @@ const FileManager = () => {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
   const [searchInputValue, setSearchInputValue] = useState('');
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, isLoading, loadMore]);
 
   // Sync searchInputValue with store searchQuery when searchQuery is cleared externally
   useEffect(() => {
@@ -137,8 +161,10 @@ const FileManager = () => {
       
       const content = result.content.toString();
       let size = 0;
-      if (result.res && result.res.headers && result.res.headers['content-length']) {
-        size = parseInt(result.res.headers['content-length'] as string);
+      // headers type in ali-oss is sometimes loose, cast to any to avoid strict mode error
+      const headers = result.res && result.res.headers ? (result.res.headers as any) : {};
+      if (headers['content-length']) {
+        size = parseInt(headers['content-length'] as string);
       }
       if (!size) {
         size = new Blob([content]).size;
@@ -369,6 +395,12 @@ const FileManager = () => {
               </SwipeableListItem>
             ))}
           </SwipeableList>
+        )}
+        
+        {hasMore && !isSearching && !searchQuery && !error && (
+            <div ref={observerTarget} className="h-20 flex justify-center items-center w-full">
+                {isLoading && <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />}
+            </div>
         )}
       </div>
 

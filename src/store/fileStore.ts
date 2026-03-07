@@ -12,6 +12,8 @@ interface FileState {
   searchQuery: string;
   searchResults: OSSObject[];
   isSearching: boolean;
+  nextMarker: string | null;
+  hasMore: boolean;
   
   setCurrentPath: (path: string) => void;
   setSearchQuery: (query: string) => void;
@@ -19,6 +21,7 @@ interface FileState {
   clearSelection: () => void;
   
   fetchFiles: (refresh?: boolean) => Promise<void>;
+  loadMore: () => Promise<void>;
   deleteFiles: (keys: string[]) => Promise<void>;
   createFolder: (folderName: string) => Promise<void>;
   renameFile: (oldKey: string, newName: string) => Promise<void>;
@@ -34,10 +37,12 @@ export const useFileStore = create<FileState>((set, get) => ({
   searchQuery: '',
   searchResults: [],
   isSearching: false,
+  nextMarker: null,
+  hasMore: false,
 
   setCurrentPath: (path) => {
-    set({ currentPath: path, selectedFiles: [], searchQuery: '', searchResults: [] });
-    get().fetchFiles();
+    set({ currentPath: path, selectedFiles: [], searchQuery: '', searchResults: [], nextMarker: null, hasMore: false });
+    get().fetchFiles(true);
   },
 
   setSearchQuery: async (query) => {
@@ -126,6 +131,9 @@ export const useFileStore = create<FileState>((set, get) => ({
     const effectivePath = currentPath || rootPath;
 
     set({ isLoading: true, error: null });
+    if (refresh) {
+        set({ files: [], nextMarker: null, hasMore: false });
+    }
 
     try {
       // Check cache first if not refreshing
@@ -138,12 +146,14 @@ export const useFileStore = create<FileState>((set, get) => ({
       const result = await client.list({
         prefix: effectivePath,
         delimiter: '/',
-        ['max-keys']: 100, // Pagination todo
+        ['max-keys']: 100,
+        marker: refresh ? undefined : get().nextMarker || undefined,
       }, {});
 
       const objects: OSSObject[] = [];
 
       // Process directories (prefixes)
+      // Only add directories if it's the first page (no marker) or if OSS returns prefixes in subsequent pages (it does)
       if (result.prefixes) {
         result.prefixes.forEach((prefix: string) => {
           // Remove the current path from the name to get the display name
@@ -176,12 +186,43 @@ export const useFileStore = create<FileState>((set, get) => ({
         });
       }
 
-      set({ files: objects, isLoading: false });
+      set((state) => {
+        let newFiles = [];
+        if (refresh) {
+            newFiles = objects;
+        } else {
+            // Deduplicate when loading more
+            // Create a Set of existing identifiers "type:name"
+            const existingSet = new Set(state.files.map(f => `${f.type}:${f.name}`));
+            newFiles = [...state.files];
+            
+            objects.forEach(obj => {
+                const id = `${obj.type}:${obj.name}`;
+                if (!existingSet.has(id)) {
+                    newFiles.push(obj);
+                }
+            });
+        }
+
+        return { 
+            files: newFiles, 
+            isLoading: false,
+            nextMarker: result.nextMarker || null,
+            hasMore: !!result.nextMarker
+        };
+      });
 
     } catch (err: any) {
       console.error(err);
       set({ isLoading: false, error: err.message || 'Failed to fetch files' });
     }
+  },
+
+  loadMore: async () => {
+      const { hasMore, isLoading } = get();
+      if (hasMore && !isLoading) {
+          await get().fetchFiles(false);
+      }
   },
 
   deleteFiles: async (keys) => {

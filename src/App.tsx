@@ -1,21 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
-import FileManager from '@/pages/FileManager';
-import Settings from '@/pages/Settings';
-import OSSConfig from '@/pages/OSSConfig';
-import FilenameCleanConfig from '@/pages/FilenameCleanConfig';
-import RecycleBin from '@/pages/RecycleBin';
-import Reader from '@/pages/Reader';
-import Downloads from '@/pages/Downloads';
 import BottomNav from '@/components/BottomNav';
 import { Toaster } from '@/components/ui/sonner';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Lazy load pages
+const FileManager = lazy(() => import('@/pages/FileManager'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const OSSConfig = lazy(() => import('@/pages/OSSConfig'));
+const FilenameCleanConfig = lazy(() => import('@/pages/FilenameCleanConfig'));
+const RecycleBin = lazy(() => import('@/pages/RecycleBin'));
+const Reader = lazy(() => import('@/pages/Reader'));
+const Downloads = lazy(() => import('@/pages/Downloads'));
 
 const MainLayout = () => {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <main className="flex-1 overflow-hidden relative">
-        <Outlet />
+        <Suspense fallback={<div className="p-4 space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-64 w-full" /></div>}>
+          <Outlet />
+        </Suspense>
       </main>
       <BottomNav />
     </div>
@@ -39,10 +44,26 @@ function App() {
           <Route path="/downloads" element={<Downloads />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
-        <Route path="/settings/oss" element={<OSSConfig />} />
-        <Route path="/settings/filename-clean" element={<FilenameCleanConfig />} />
-        <Route path="/settings/recycle" element={<RecycleBin />} />
-        <Route path="/reader/:path" element={<Reader />} />
+        <Route path="/settings/oss" element={
+          <Suspense fallback={<div className="p-4"><Skeleton className="h-12 w-full" /></div>}>
+            <OSSConfig />
+          </Suspense>
+        } />
+        <Route path="/settings/filename-clean" element={
+          <Suspense fallback={<div className="p-4"><Skeleton className="h-12 w-full" /></div>}>
+            <FilenameCleanConfig />
+          </Suspense>
+        } />
+        <Route path="/settings/recycle" element={
+          <Suspense fallback={<div className="p-4"><Skeleton className="h-12 w-full" /></div>}>
+            <RecycleBin />
+          </Suspense>
+        } />
+        <Route path="/reader/:path" element={
+          <Suspense fallback={<div className="p-4"><Skeleton className="h-full w-full" /></div>}>
+            <Reader />
+          </Suspense>
+        } />
       </Routes>
       <Toaster />
     </Router>
