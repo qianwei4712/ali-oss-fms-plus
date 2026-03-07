@@ -116,15 +116,20 @@ const FileManager = () => {
 
   const [searchInputValue, setSearchInputValue] = useState('');
   const observerTarget = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !error) {
           loadMore();
         }
       },
-      { threshold: 0.1 }
+      { 
+        root: scrollContainerRef.current,
+        threshold: 0.1,
+        rootMargin: '200px'
+      }
     );
 
     if (observerTarget.current) {
@@ -132,11 +137,9 @@ const FileManager = () => {
     }
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
+      observer.disconnect();
     };
-  }, [hasMore, isLoading, loadMore]);
+  }, [hasMore, isLoading, loadMore, error]);
 
   // Sync searchInputValue with store searchQuery when searchQuery is cleared externally
   useEffect(() => {
@@ -387,14 +390,17 @@ const FileManager = () => {
       </div>
 
       {/* File List */}
-      <div className="flex-1 overflow-y-auto bg-muted/30">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto bg-muted/30"
+      >
         {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
               <Skeleton key={i} className="h-16 w-full rounded-xl" />
             ))}
           </div>
-        ) : error ? (
+        ) : error && displayFiles.length === 0 ? (
           <div className="p-4 text-center text-destructive">{error}</div>
         ) : displayFiles.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
@@ -421,9 +427,24 @@ const FileManager = () => {
           </SwipeableList>
         )}
         
-        {hasMore && !isSearching && !searchQuery && !error && (
-            <div ref={observerTarget} className="h-20 flex justify-center items-center w-full">
-                {isLoading && <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />}
+        {hasMore && !isSearching && !searchQuery && (
+            <div 
+                ref={observerTarget} 
+                className="h-20 flex justify-center items-center w-full cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => {
+                    if (!isLoading) loadMore();
+                }}
+            >
+                {error ? (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-destructive">{error}</span>
+                        <span className="text-xs text-muted-foreground underline">Tap to retry</span>
+                    </div>
+                ) : isLoading ? (
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                    <span className="text-sm text-muted-foreground/50">Load More</span>
+                )}
             </div>
         )}
       </div>
