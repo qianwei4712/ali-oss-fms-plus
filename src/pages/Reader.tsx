@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
@@ -31,7 +31,7 @@ const Reader = () => {
   const [searchParams] = useSearchParams();
   const isOffline = searchParams.get('offline') === 'true';
   const navigate = useNavigate();
-  const { ossConfig, filenameCleanPatterns } = useConfigStore();
+  const { ossConfig } = useConfigStore();
   const { deleteFiles, moveFile, renameFile } = useFileStore();
   const { theme: globalTheme } = useTheme();
   
@@ -59,15 +59,40 @@ const Reader = () => {
   const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showControls, setShowControls] = useState(false);
+  const lastScrollTopRef = useRef(0);
 
   const handleScroll = () => {
     if (scrollRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        
+        // Calculate progress
         if (scrollHeight > clientHeight) {
             const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
             setScrollProgress(progress);
         } else {
             setScrollProgress(0);
+        }
+
+        // Handle show/hide controls based on scroll direction
+        const currentScrollTop = scrollTop;
+        const lastScrollTop = lastScrollTopRef.current;
+        const scrollDelta = currentScrollTop - lastScrollTop;
+
+        // Ignore bounce/rubber-banding at edges
+        if (currentScrollTop < 0 || currentScrollTop > (scrollHeight - clientHeight)) {
+            return;
+        }
+
+        // Threshold to prevent jitter (e.g. 10px)
+        if (Math.abs(scrollDelta) > 10) {
+            if (scrollDelta > 0 && showControls) {
+                // Scrolling down -> hide controls
+                setShowControls(false);
+            } else if (scrollDelta < 0 && !showControls) {
+                // Scrolling up -> show controls
+                setShowControls(true);
+            }
+            lastScrollTopRef.current = currentScrollTop;
         }
     }
   };
