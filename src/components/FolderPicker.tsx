@@ -111,7 +111,7 @@ export const FolderPicker = ({
         )}
       </div>
 
-      <div className="flex justify-end space-x-2 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button onClick={() => onSelect(path)}>Move Here</Button>
       </div>

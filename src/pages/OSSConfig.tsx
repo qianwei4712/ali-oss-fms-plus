@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ArrowLeft, Save } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const OSSConfig = () => {
   const navigate = useNavigate();
@@ -190,7 +190,9 @@ const OSSConfig = () => {
               <li>Save and try again.</li>
             </ol>
           </div>
-          <Button onClick={() => setShowCorsHelp(false)}>I have configured it</Button>
+          <DialogFooter>
+            <Button onClick={() => setShowCorsHelp(false)}>I have configured it</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
