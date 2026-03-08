@@ -22,6 +22,7 @@ import {
   Eye,
   MoreVertical,
   ChevronRight,
+  UploadCloud,
 } from 'lucide-react';
 import { SwipeableList, SwipeableListItem, SwipeAction, TrailingActions, Type as ListType } from 'react-swipeable-list';
 import 'react-swipeable-list/dist/styles.css';
@@ -46,6 +47,7 @@ import { Label } from "@/components/ui/label";
 
 import { FolderPicker } from '@/components/FolderPicker';
 import { RenameDialog } from '@/components/RenameDialog';
+import { UploadDialog } from '@/components/UploadDialog';
 
 // Memoized File Row Component
 const FileRow = memo(({ 
@@ -103,7 +105,8 @@ const FileManager = () => {
     searchResults,
     isSearching,
     hasMore,
-    loadMore
+    loadMore,
+    uploadFiles
   } = useFileStore();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -112,6 +115,11 @@ const FileManager = () => {
   const [moveOpen, setMoveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [globalMenuOpen, setGlobalMenuOpen] = useState(false);
+  
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchInputValue, setSearchInputValue] = useState('');
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -169,6 +177,25 @@ const FileManager = () => {
 
   const handleFolderClick = (folderName: string) => {
     setCurrentPath(currentPath + folderName + '/');
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+        setFilesToUpload(Array.from(e.target.files));
+        setUploadDialogOpen(true);
+    }
+    // Reset input value to allow re-selection of same file
+    e.target.value = '';
+  };
+
+  const handleUploadConfirm = async (path: string) => {
+    await uploadFiles(filesToUpload, path);
+    setUploadDialogOpen(false);
+    setFilesToUpload([]);
   };
 
   const handleFileClick = (file: OSSObject) => {
@@ -352,6 +379,17 @@ const FileManager = () => {
           <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
+          <Button variant="ghost" size="icon" onClick={() => setGlobalMenuOpen(true)} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            multiple 
+            accept=".txt" 
+            onChange={handleFileSelect}
+          />
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -550,6 +588,44 @@ const FileManager = () => {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Global Actions Menu */}
+      <Drawer open={globalMenuOpen} onOpenChange={setGlobalMenuOpen}>
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Actions</DrawerTitle>
+          </DrawerHeader>
+          <div className="p-4 space-y-3">
+             <Button 
+                variant="outline" 
+                className="w-full flex items-center justify-start h-12 space-x-3 border-primary/10 bg-primary/5 hover:bg-primary/10 hover:text-primary transition-all rounded-xl"
+                onClick={() => {
+                    handleUploadClick();
+                    setGlobalMenuOpen(false);
+                }}
+             >
+                <div className="bg-background p-1.5 rounded-lg border border-primary/20">
+                    <UploadCloud className="h-5 w-5 text-primary" />
+                </div>
+                <span className="font-medium">Upload Files</span>
+             </Button>
+          </div>
+          <DrawerFooter className="pt-0">
+            <DrawerClose asChild>
+              <Button variant="ghost" className="w-full">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Upload Dialog */}
+      <UploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        files={filesToUpload}
+        initialPath={currentPath}
+        onUpload={handleUploadConfirm}
+      />
 
     </div>
   );

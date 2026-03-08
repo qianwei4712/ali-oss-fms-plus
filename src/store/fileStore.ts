@@ -26,6 +26,7 @@ interface FileState {
   createFolder: (folderName: string) => Promise<void>;
   renameFile: (oldKey: string, newName: string) => Promise<void>;
   moveFile: (sourceKey: string, destinationPath: string) => Promise<void>;
+  uploadFiles: (files: File[], destinationPath: string) => Promise<void>;
 }
 
 export const useFileStore = create<FileState>((set, get) => ({
@@ -439,6 +440,31 @@ export const useFileStore = create<FileState>((set, get) => ({
           error: err.message 
       });
       throw err;
+    }
+  },
+
+  uploadFiles: async (files, destinationPath) => {
+    const { ossConfig } = useConfigStore.getState();
+    if (!ossConfig) throw new Error("OSS Config missing");
+
+    set({ isLoading: true, error: null });
+
+    try {
+        const client = initOSSClient(ossConfig);
+        
+        // Upload sequentially or parallel? Parallel is faster.
+        const uploadPromises = files.map(file => {
+            const key = destinationPath + file.name;
+            return client.put(key, file);
+        });
+
+        await Promise.all(uploadPromises);
+        
+        set({ isLoading: false });
+        get().fetchFiles(true);
+    } catch (err: any) {
+        set({ isLoading: false, error: err.message || 'Upload failed' });
+        throw err;
     }
   }
 
