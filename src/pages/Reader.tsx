@@ -61,6 +61,13 @@ const Reader = () => {
   const [showControls, setShowControls] = useState(false);
   const lastScrollTopRef = useRef(0);
 
+  // Sync lastScrollTop when chapter changes to prevent jumpy controls
+  useEffect(() => {
+    if (scrollRef.current) {
+        lastScrollTopRef.current = 0;
+    }
+  }, [currentChapterIndex]);
+
   const handleScroll = () => {
     if (scrollRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
@@ -85,10 +92,10 @@ const Reader = () => {
 
         // Threshold to prevent jitter (e.g. 10px)
         if (Math.abs(scrollDelta) > 10) {
-            if (scrollDelta > 0 && showControls) {
+            if (scrollDelta > 0) {
                 // Scrolling down -> hide controls
                 setShowControls(false);
-            } else if (scrollDelta < 0 && !showControls) {
+            } else if (scrollDelta < 0) {
                 // Scrolling up -> show controls
                 setShowControls(true);
             }
@@ -104,6 +111,8 @@ const Reader = () => {
         const { scrollHeight, clientHeight } = scrollRef.current;
         const newScrollTop = (newProgress / 100) * (scrollHeight - clientHeight);
         scrollRef.current.scrollTop = newScrollTop;
+        // Sync ref to prevent immediate hiding/showing after manual seek
+        lastScrollTopRef.current = newScrollTop;
     }
   };
 
