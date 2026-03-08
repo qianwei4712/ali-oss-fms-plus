@@ -10,10 +10,11 @@ import { Slider } from '@/components/ui/slider';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { FolderPicker } from '@/components/FolderPicker';
+import { RenameDialog } from '@/components/RenameDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine, Sparkles } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine } from 'lucide-react';
 import chardet from 'chardet';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +53,6 @@ const Reader = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Progress restoration state
@@ -125,11 +125,11 @@ const Reader = () => {
     }
   };
 
-  const handleRename = async () => {
-    if (!path || !renameValue.trim()) return;
+  const handleRenameConfirm = async (newName: string) => {
+    if (!path) return;
     try {
         const key = decodeURIComponent(path);
-        const newName = renameValue.trim();
+        // newName already has .txt from RenameDialog
         await renameFile(key, newName);
         toast.success('File renamed');
         setIsRenameOpen(false);
@@ -141,9 +141,6 @@ const Reader = () => {
         const newKey = pathParts.length > 0 ? `${pathParts.join('/')}/${newName}` : newName;
         
         // Navigate to new reader path
-        // We use replace to update the URL without adding a new history entry if we want, 
-        // but here maybe pushing is fine? No, replace is better for renaming.
-        // However, Reader component depends on path param.
         navigate(`/reader/${encodeURIComponent(newKey)}`, { replace: true });
     } catch (e: any) {
         toast.error('Failed to rename file: ' + e.message);
@@ -489,12 +486,6 @@ const Reader = () => {
                         className="flex flex-col items-center justify-center h-20 space-y-2 border-primary/10 bg-primary/5 hover:bg-primary/10 hover:text-primary transition-all rounded-xl text-primary" 
                         onClick={() => {
                             setIsActionsOpen(false);
-                            // Set initial value for rename
-                            if (path) {
-                                const key = decodeURIComponent(path);
-                                const fileName = key.split('/').pop() || '';
-                                setRenameValue(fileName);
-                            }
                             setIsRenameOpen(true);
                         }}
                     >
@@ -595,50 +586,13 @@ const Reader = () => {
       )}
 
       {/* Rename Dialog */}
-      <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Rename File</DialogTitle>
-                <DialogDescription>Enter a new name for the file.</DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-3">
-                <div className="flex space-x-2">
-                    <Input 
-                        className="flex-1"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        placeholder="New filename"
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                handleRename();
-                            }
-                        }}
-                    />
-                    {filenameCleanPatterns && filenameCleanPatterns.length > 0 && (
-                        <Button 
-                            variant="secondary" 
-                            size="icon"
-                            onClick={() => {
-                                let newValue = renameValue;
-                                filenameCleanPatterns.forEach(p => {
-                                    newValue = newValue.replaceAll(p, '');
-                                });
-                                setRenameValue(newValue);
-                                toast.success('Applied clean patterns');
-                            }}
-                            title="Auto Clean Filename"
-                        >
-                            <Sparkles className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsRenameOpen(false)}>Cancel</Button>
-                <Button onClick={handleRename}>Rename</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RenameDialog 
+        open={isRenameOpen}
+        onOpenChange={setIsRenameOpen}
+        currentName={path ? decodeURIComponent(path).split('/').pop() || '' : ''}
+        onRename={handleRenameConfirm}
+        description="Enter a new name for the file."
+      />
 
       {/* Move Dialog */}
       <Dialog open={isMoveOpen} onOpenChange={setIsMoveOpen}>

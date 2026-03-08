@@ -22,7 +22,6 @@ import {
   Eye,
   MoreVertical,
   ChevronRight,
-  Eraser
 } from 'lucide-react';
 import { SwipeableList, SwipeableListItem, SwipeAction, TrailingActions, Type as ListType } from 'react-swipeable-list';
 import 'react-swipeable-list/dist/styles.css';
@@ -46,6 +45,7 @@ import {
 import { Label } from "@/components/ui/label";
 
 import { FolderPicker } from '@/components/FolderPicker';
+import { RenameDialog } from '@/components/RenameDialog';
 
 // Memoized File Row Component
 const FileRow = memo(({ 
@@ -109,7 +109,6 @@ const FileManager = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<OSSObject | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
-  const [newName, setNewName] = useState('');
   const [moveOpen, setMoveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
@@ -247,40 +246,17 @@ const FileManager = () => {
     }
   };
 
-  const handleAutoClean = () => {
-    if (!filenameCleanPatterns || filenameCleanPatterns.length === 0) {
-      toast.info('No cleaning patterns configured');
-      return;
-    }
-    
-    let cleanedName = newName;
-    let originalName = newName;
-    
-    filenameCleanPatterns.forEach(pattern => {
-      cleanedName = cleanedName.split(pattern).join('');
-    });
-    
-    if (cleanedName !== originalName) {
-      setNewName(cleanedName);
-      toast.success('Filename cleaned');
+  const onRename = async () => {
+    if (selectedFile?.name.endsWith('.txt')) {
+       setRenameOpen(true);
     } else {
-      toast.info('No matching patterns found');
+       toast.info('Only .txt files supported');
     }
   };
 
-  const onRename = async () => {
-    if (!selectedFile || !newName.trim()) return;
-    
-    let finalName = newName.trim();
-    if (!finalName.endsWith('.txt')) {
-        finalName += '.txt';
-    }
+  const handleRenameConfirm = async (newName: string) => {
+    if (!selectedFile) return;
 
-    if (finalName === selectedFile.name) {
-        setRenameOpen(false);
-        return;
-    }
-    
     try {
         const oldKey = searchQuery 
             ? (ossConfig?.rootPath || '') + selectedFile.name 
@@ -293,7 +269,7 @@ const FileManager = () => {
              return;
         }
 
-        await renameFile(oldKey, finalName);
+        await renameFile(oldKey, newName);
         toast.success('Renamed successfully');
         setRenameOpen(false);
     } catch (err: unknown) {
@@ -492,8 +468,12 @@ const FileManager = () => {
                 className="flex flex-col items-center justify-center h-20 space-y-2 border-warning/10 bg-warning/5 hover:bg-warning/10 hover:text-warning transition-all rounded-xl text-warning" 
                 onClick={() => {
                     setMenuOpen(false);
-                    setNewName(selectedFile?.name.replace(/\.txt$/, '') || '');
-                    setRenameOpen(true);
+                    // Check if txt
+                    if (selectedFile?.name.endsWith('.txt')) {
+                        setRenameOpen(true);
+                    } else {
+                        toast.info('Only .txt files supported');
+                    }
                 }}
             >
                 <Pencil className="h-6 w-6" />
@@ -533,37 +513,12 @@ const FileManager = () => {
       </Drawer>
 
       {/* Rename Dialog */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Rename File</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="name">New Name</Label>
-                    <div className="flex space-x-2">
-                        <Input 
-                            id="name" 
-                            value={newName} 
-                            onChange={(e) => setNewName(e.target.value)} 
-                        />
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            title="Auto Clean"
-                            onClick={handleAutoClean}
-                        >
-                            <Eraser className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
-                <Button onClick={onRename}>Rename</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RenameDialog 
+        open={renameOpen} 
+        onOpenChange={setRenameOpen}
+        currentName={selectedFile?.name.split('/').pop() || ''}
+        onRename={handleRenameConfirm}
+      />
 
       {/* Move Dialog */}
       <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
