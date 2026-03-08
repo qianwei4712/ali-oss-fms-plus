@@ -250,7 +250,7 @@ const RecycleBin = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
         {isLoading && files.length === 0 ? (
            <div className="space-y-4">
              <Skeleton className="h-16 w-full rounded-xl" />

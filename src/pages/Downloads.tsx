@@ -70,7 +70,7 @@ const Downloads = () => {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-3 no-scrollbar">
         {isLoading ? (
           [1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
         ) : files.length === 0 ? (

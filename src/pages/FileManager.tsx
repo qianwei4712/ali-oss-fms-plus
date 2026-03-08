@@ -392,7 +392,7 @@ const FileManager = () => {
       {/* File List */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto bg-muted/30 pb-24"
+        className="flex-1 overflow-y-auto bg-muted/30 pb-24 no-scrollbar"
       >
         {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">
