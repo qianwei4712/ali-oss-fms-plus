@@ -223,7 +223,7 @@ const RecycleBin = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-muted/30">
+    <div className="flex flex-col min-h-full bg-muted/30">
       <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2 shadow-sm">
         <Button variant="ghost" size="icon" onClick={handleBack} className="hover:bg-primary/10 hover:text-primary">
           <ArrowLeft className="h-5 w-5" />
@@ -250,7 +250,7 @@ const RecycleBin = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+      <div className="flex-1 p-4 space-y-3">
         {isLoading && files.length === 0 ? (
            <div className="space-y-4">
              <Skeleton className="h-16 w-full rounded-xl" />

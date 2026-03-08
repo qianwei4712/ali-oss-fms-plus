@@ -43,7 +43,7 @@ const Settings = () => {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/30 pb-24">
+    <div className="flex flex-col min-h-full bg-muted/30 pb-24">
       <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2">
         <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="hover:bg-primary/10 hover:text-primary">
           <ArrowLeft className="h-6 w-6" />

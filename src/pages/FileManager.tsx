@@ -360,7 +360,7 @@ const FileManager = () => {
   }, [searchQuery, ossConfig, currentPath, setCurrentPath, setSearchQuery]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full">
       {/* Top Bar */}
       <div className="px-4 py-2 space-y-1.5 glass z-10 sticky top-0 border-b">
         <div className="flex items-center space-x-2">
@@ -406,7 +406,7 @@ const FileManager = () => {
       {/* File List */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto bg-muted/30 pb-24 no-scrollbar"
+        className="flex-1 pb-24"
       >
         {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">

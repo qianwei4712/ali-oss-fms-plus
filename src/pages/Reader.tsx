@@ -347,7 +347,7 @@ const Reader = () => {
   const currentChapterTitle = chapters[currentChapterIndex]?.title || '';
 
   return (
-    <div className={cn("relative h-[100dvh] w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
+    <div className={cn("relative h-full w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn(
         "absolute top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
