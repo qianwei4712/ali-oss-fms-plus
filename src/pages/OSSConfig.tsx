@@ -176,7 +176,7 @@ const OSSConfig = () => {
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <ol className="list-decimal pl-4 space-y-2">
-              <li>Log in to <a href="https://oss.console.aliyun.com/" target="_blank" className="text-blue-500 underline">Aliyun OSS Console</a>.</li>
+              <li>Log in to <a href="https://oss.console.aliyun.com/" target="_blank" className="text-primary underline">Aliyun OSS Console</a>.</li>
               <li>Go to your Bucket: <strong>{formData.bucket || 'your-bucket'}</strong>.</li>
               <li>Navigate to <strong>Content Security (数据安全)</strong> -&gt; <strong>Cross-Origin Resource Sharing (跨域设置)</strong>.</li>
               <li>Click <strong>Create Rule</strong> and enter:

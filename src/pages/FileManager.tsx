@@ -326,16 +326,16 @@ const FileManager = () => {
         <SwipeAction
           onClick={() => handleDownload(fileName)}
         >
-          <div className="bg-green-500 flex items-center justify-center px-4 h-full">
-            <Download className="text-white" />
+          <div className="bg-success flex items-center justify-center px-4 h-full">
+            <Download className="text-success-foreground" />
           </div>
         </SwipeAction>
       )}
       <SwipeAction
         onClick={() => handleDelete(fileName)}
       >
-        <div className="bg-red-500 flex items-center justify-center px-4 h-full">
-          <Trash2 className="text-white" />
+        <div className="bg-destructive flex items-center justify-center px-4 h-full">
+          <Trash2 className="text-destructive-foreground" />
         </div>
       </SwipeAction>
     </TrailingActions>
@@ -477,7 +477,7 @@ const FileManager = () => {
             
             <Button 
                 variant="outline" 
-                className="flex flex-col items-center justify-center h-20 space-y-2 border-green-500/10 bg-green-500/5 hover:bg-green-500/10 hover:text-green-600 transition-all rounded-xl text-green-600" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-success/10 bg-success/5 hover:bg-success/10 hover:text-success transition-all rounded-xl text-success" 
                 onClick={() => {
                     if (selectedFile) handleDownload(selectedFile.name);
                     setMenuOpen(false);
@@ -489,7 +489,7 @@ const FileManager = () => {
 
             <Button 
                 variant="outline" 
-                className="flex flex-col items-center justify-center h-20 space-y-2 border-orange-500/10 bg-orange-500/5 hover:bg-orange-500/10 hover:text-orange-600 transition-all rounded-xl text-orange-600" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-warning/10 bg-warning/5 hover:bg-warning/10 hover:text-warning transition-all rounded-xl text-warning" 
                 onClick={() => {
                     setMenuOpen(false);
                     setNewName(selectedFile?.name.replace(/\.txt$/, '') || '');
@@ -502,7 +502,7 @@ const FileManager = () => {
 
             <Button 
                 variant="outline" 
-                className="flex flex-col items-center justify-center h-20 space-y-2 border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-xl text-blue-600" 
+                className="flex flex-col items-center justify-center h-20 space-y-2 border-info/10 bg-info/5 hover:bg-info/10 hover:text-info transition-all rounded-xl text-info" 
                 onClick={() => {
                     setMenuOpen(false);
                     setMoveOpen(true);

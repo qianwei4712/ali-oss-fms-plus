@@ -103,7 +103,7 @@ export const FolderPicker = ({
                     className="flex items-center p-2 hover:bg-accent rounded-md cursor-pointer"
                     onClick={() => handleFolderClick(f.name)}
                 >
-                    <Folder className="h-4 w-4 mr-2 text-blue-500" />
+                    <Folder className="h-4 w-4 mr-2 text-primary" />
                     <span className="text-sm truncate flex-1">{f.name}</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>

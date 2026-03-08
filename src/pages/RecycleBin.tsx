@@ -204,8 +204,8 @@ const RecycleBin = () => {
             setConfirmOpen(true);
         }}
       >
-        <div className="bg-blue-500 flex items-center justify-center px-4 h-full">
-          <RotateCcw className="text-white" />
+        <div className="bg-info flex items-center justify-center px-4 h-full">
+          <RotateCcw className="text-info-foreground" />
         </div>
       </SwipeAction>
       <SwipeAction
@@ -215,8 +215,8 @@ const RecycleBin = () => {
             setConfirmOpen(true);
         }}
       >
-        <div className="bg-red-600 flex items-center justify-center px-4 h-full">
-          <Trash2 className="text-white" />
+        <div className="bg-destructive flex items-center justify-center px-4 h-full">
+          <Trash2 className="text-destructive-foreground" />
         </div>
       </SwipeAction>
     </TrailingActions>

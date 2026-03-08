@@ -503,7 +503,7 @@ const Reader = () => {
                     </Button>
                     <Button 
                         variant="outline" 
-                        className="flex flex-col items-center justify-center h-20 space-y-2 border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 hover:text-blue-600 transition-all rounded-xl text-blue-600" 
+                        className="flex flex-col items-center justify-center h-20 space-y-2 border-info/10 bg-info/5 hover:bg-info/10 hover:text-info transition-all rounded-xl text-info" 
                         onClick={() => {
                             setIsActionsOpen(false);
                             setIsMoveOpen(true);
