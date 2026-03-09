@@ -62,68 +62,60 @@ const Reader = () => {
   const lastScrollTopRef = useRef(0);
   const isUserInteractingRef = useRef(false);
 
-  // Sync lastScrollTop when chapter changes to prevent jumpy controls
-  // This logic is now handled in useLayoutEffect below
-  // useEffect(() => {
-  //   if (scrollRef.current) {
-  //       lastScrollTopRef.current = 0;
-  //   }
-  // }, [currentChapterIndex]);
-
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (scrollRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
         
-        // Calculate progress
-        if (!isUserInteractingRef.current) {
-            if (scrollHeight > clientHeight) {
-                let progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-                // Clamp progress between 0 and 100
-                progress = Math.min(100, Math.max(0, progress));
-                setScrollProgress(progress);
-            } else {
-                setScrollProgress(0);
-            }
-        }
-
-        // Handle show/hide controls based on scroll direction
+        // Always update control visibility logic
         const currentScrollTop = scrollTop;
         const lastScrollTop = lastScrollTopRef.current;
         const scrollDelta = currentScrollTop - lastScrollTop;
 
-        // Ignore bounce/rubber-banding at edges
         if (currentScrollTop < 0 || currentScrollTop > (scrollHeight - clientHeight)) {
             return;
         }
 
-        // Threshold to prevent jitter (e.g. 10px)
+        // Only toggle controls if NOT interacting with slider
         if (Math.abs(scrollDelta) > 10 && !isUserInteractingRef.current) {
             if (scrollDelta > 0) {
-                // Scrolling down -> hide controls
                 setShowControls(false);
             } else if (scrollDelta < 0) {
-                // Scrolling up -> show controls
                 setShowControls(true);
             }
             lastScrollTopRef.current = currentScrollTop;
         } else if (isUserInteractingRef.current) {
-            // Always update last scroll pos during interaction to prevent jump after release
             lastScrollTopRef.current = currentScrollTop;
         }
-    }
-  };
 
-  const handleProgressChange = (value: number[]) => {
+        // Calculate progress - ALWAYS update state to match reality
+        if (scrollHeight > clientHeight) {
+            let progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+            progress = Math.min(100, Math.max(0, progress));
+            setScrollProgress(progress);
+        } else {
+            setScrollProgress(0);
+        }
+    }
+  }, []);
+
+  const handleProgressChange = useCallback((value: number[]) => {
     const newProgress = value[0];
+    
+    // Set lock for controls visibility only
+    isUserInteractingRef.current = true;
+    
+    // Update local state
     setScrollProgress(newProgress);
+    
     if (scrollRef.current) {
         const { scrollHeight, clientHeight } = scrollRef.current;
-        const newScrollTop = (newProgress / 100) * (scrollHeight - clientHeight);
-        scrollRef.current.scrollTop = newScrollTop;
-        // Sync ref to prevent immediate hiding/showing after manual seek
-        lastScrollTopRef.current = newScrollTop;
+        const targetScrollTop = (newProgress / 100) * (scrollHeight - clientHeight);
+        
+        // Directly set scroll position
+        scrollRef.current.scrollTop = targetScrollTop;
+        lastScrollTopRef.current = targetScrollTop;
     }
-  };
+  }, []);
 
   // Auto-scroll to active chapter in TOC
   const scrollToActiveChapter = useCallback((node: HTMLDivElement | null) => {
@@ -422,7 +414,7 @@ const Reader = () => {
   const currentChapterTitle = chapters[currentChapterIndex]?.title || '';
 
   return (
-    <div className={cn("relative h-full w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
+    <div className={cn("relative h-[100dvh] w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn(
         "fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
@@ -666,17 +658,13 @@ const Reader = () => {
             <Slider
                 value={[scrollProgress]}
                 max={100}
-                step={1}
-                onValueChange={(vals) => {
-                    isUserInteractingRef.current = true;
-                    handleProgressChange(vals);
-                }}
+                step={0.1}
+                onValueChange={handleProgressChange}
                 onValueCommit={() => {
-                    isUserInteractingRef.current = false;
-                    // Force update scroll position reference to prevent jumps
-                    if (scrollRef.current) {
-                        lastScrollTopRef.current = scrollRef.current.scrollTop;
-                    }
+                    // Keep lock active slightly longer to handle inertia
+                    setTimeout(() => {
+                        isUserInteractingRef.current = false;
+                    }, 200);
                 }}
                 className="flex-1 cursor-pointer py-4"
             />
