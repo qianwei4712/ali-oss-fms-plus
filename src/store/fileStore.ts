@@ -20,12 +20,18 @@ interface FileState {
   toggleSelection: (key: string) => void;
   clearSelection: () => void;
   
+  isSelectionMode: boolean;
+  toggleSelectionMode: () => void;
+  setSelectionMode: (mode: boolean) => void;
+  selectAll: (keys: string[]) => void;
+  
   fetchFiles: (refresh?: boolean) => Promise<void>;
   loadMore: () => Promise<void>;
   deleteFiles: (keys: string[]) => Promise<void>;
   createFolder: (folderName: string) => Promise<void>;
   renameFile: (oldKey: string, newName: string) => Promise<void>;
   moveFile: (sourceKey: string, destinationPath: string) => Promise<void>;
+  moveFiles: (sourceKeys: string[], destinationPath: string) => Promise<void>;
   uploadFiles: (files: File[], destinationPath: string) => Promise<void>;
 }
 
@@ -35,14 +41,19 @@ export const useFileStore = create<FileState>((set, get) => ({
   isLoading: false,
   error: null,
   selectedFiles: [],
+  isSelectionMode: false,
   searchQuery: '',
   searchResults: [],
   isSearching: false,
   nextMarker: null,
   hasMore: false,
 
+  toggleSelectionMode: () => set((state) => ({ isSelectionMode: !state.isSelectionMode, selectedFiles: [] })),
+  setSelectionMode: (mode) => set({ isSelectionMode: mode, selectedFiles: [] }),
+  selectAll: (keys) => set({ selectedFiles: keys }),
+
   setCurrentPath: (path) => {
-    set({ currentPath: path, selectedFiles: [], searchQuery: '', searchResults: [], nextMarker: null, hasMore: false });
+    set({ currentPath: path, selectedFiles: [], isSelectionMode: false, searchQuery: '', searchResults: [], nextMarker: null, hasMore: false });
     get().fetchFiles(true);
   },
 
@@ -453,6 +464,83 @@ export const useFileStore = create<FileState>((set, get) => ({
           };
           await downloadedTxtStore.setItem(newKey, newDownloadedFile);
           await downloadedTxtStore.removeItem(sourceKey);
+      }
+
+      set({ isLoading: false });
+      // get().fetchFiles(true);
+    } catch (err: any) {
+      set({ 
+          files: previousFiles, 
+          searchResults: previousSearchResults,
+          isLoading: false, 
+          error: err.message 
+      });
+      throw err;
+    }
+  },
+
+  moveFiles: async (sourceKeys, destinationPath) => {
+    const { ossConfig } = useConfigStore.getState();
+    if (!ossConfig) return;
+
+    // Filter out keys where source === destination (already in folder)
+    const keysToMove = sourceKeys.filter(key => {
+        const fileName = key.split('/').pop();
+        if (!fileName) return false;
+        const newKey = destinationPath + fileName;
+        return key !== newKey;
+    });
+
+    if (keysToMove.length === 0) return;
+
+    const { files, searchResults } = get();
+    const previousFiles = files;
+    const previousSearchResults = searchResults;
+
+    // Optimistic Update: Remove from current view
+    const shouldRemove = (f: OSSObject, isSearchResult: boolean) => {
+         const rootPath = ossConfig.rootPath || '';
+         let fFullPath = '';
+         if (isSearchResult) {
+             fFullPath = rootPath + f.name;
+         } else {
+             const effectivePath = get().currentPath || rootPath;
+             fFullPath = effectivePath + f.name;
+         }
+         return keysToMove.includes(fFullPath);
+    };
+
+    set({
+        files: files.filter(f => !shouldRemove(f, false)),
+        searchResults: searchResults.filter(f => !shouldRemove(f, true)),
+        isLoading: true,
+        selectedFiles: [] // Clear selection after move start
+    });
+
+    try {
+      const client = initOSSClient(ossConfig);
+      
+      // Process sequentially to avoid rate limits or errors, or parallel with limit?
+      // Simple loop for now.
+      for (const sourceKey of keysToMove) {
+          const fileName = sourceKey.split('/').pop();
+          if (!fileName) continue;
+          
+          const newKey = destinationPath + fileName;
+          
+          await client.copy(newKey, sourceKey);
+          await client.delete(sourceKey);
+
+          // Update downloadedTxtStore if exists
+          const downloadedFile = await downloadedTxtStore.getItem<DownloadedFile>(sourceKey);
+          if (downloadedFile) {
+              const newDownloadedFile: DownloadedFile = {
+                  ...downloadedFile,
+                  key: newKey
+              };
+              await downloadedTxtStore.setItem(newKey, newDownloadedFile);
+              await downloadedTxtStore.removeItem(sourceKey);
+          }
       }
 
       set({ isLoading: false });

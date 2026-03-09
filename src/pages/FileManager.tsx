@@ -24,6 +24,9 @@ import {
   MoreVertical,
   ChevronRight,
   UploadCloud,
+  CheckSquare,
+  Square,
+  Check
 } from 'lucide-react';
 import { SwipeableList, SwipeableListItem, SwipeAction, TrailingActions, Type as ListType } from 'react-swipeable-list';
 import 'react-swipeable-list/dist/styles.css';
@@ -54,17 +57,36 @@ const FileRow = memo(({
   file, 
   onClick, 
   searchQuery, 
-  isFolder 
+  isFolder,
+  selectionMode,
+  isSelected,
+  onToggleSelect
 }: { 
   file: OSSObject; 
   onClick: () => void; 
   searchQuery: string;
   isFolder: boolean;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }) => (
   <div 
-    className="group relative w-full px-3 py-2.5 mb-2 glass-card rounded-xl flex items-center space-x-3 cursor-pointer overflow-hidden border border-white/5 ring-1 ring-white/5 hover:ring-primary/20 hover:border-primary/20"
-    onClick={onClick}
+    className={`group relative w-full px-3 py-2.5 mb-2 glass-card rounded-xl flex items-center space-x-3 cursor-pointer overflow-hidden border border-white/5 ring-1 ${isSelected ? 'ring-primary border-primary/30 bg-primary/5' : 'ring-white/5 hover:ring-primary/20 hover:border-primary/20'}`}
+    onClick={(e) => {
+        if (selectionMode) {
+            e.stopPropagation();
+            onToggleSelect();
+        } else {
+            onClick();
+        }
+    }}
   >
+    {selectionMode && (
+        <div className="mr-1 text-primary">
+            {isSelected ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-muted-foreground" />}
+        </div>
+    )}
+
     <div className={`p-2 rounded-lg transition-all duration-300 ${isFolder ? 'bg-primary/20 text-primary group-hover:bg-primary group-hover:text-primary-foreground' : 'bg-secondary/50 text-secondary-foreground group-hover:bg-secondary group-hover:text-foreground'}`}>
       {isFolder ? (
         <Folder className="h-5 w-5" />
@@ -80,7 +102,7 @@ const FileRow = memo(({
         {searchQuery && <span className="ml-2 opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
       </p>
     </div>
-    {isFolder && <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />}
+    {!selectionMode && isFolder && <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />}
     
     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
   </div>
@@ -144,7 +166,13 @@ const FileManager = () => {
     isSearching,
     hasMore,
     loadMore,
-    uploadFiles
+    uploadFiles,
+    isSelectionMode,
+    toggleSelectionMode,
+    selectedFiles,
+    toggleSelection,
+    selectAll,
+    moveFiles
   } = useFileStore();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -155,6 +183,9 @@ const FileManager = () => {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [globalMenuOpen, setGlobalMenuOpen] = useState(false);
   
+  const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
+  const [batchMoveOpen, setBatchMoveOpen] = useState(false);
+
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +193,7 @@ const FileManager = () => {
   const [searchInputValue, setSearchInputValue] = useState('');
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -359,6 +391,37 @@ const FileManager = () => {
     }
   };
 
+  const handleBatchDelete = async () => {
+      if (selectedFiles.length > 0) {
+          await deleteFiles(selectedFiles);
+          toast.success(`${selectedFiles.length} files deleted`);
+          setBatchDeleteOpen(false);
+          toggleSelectionMode(); // Exit selection mode
+      }
+  };
+
+  const handleBatchMove = async (destinationPath: string) => {
+      if (selectedFiles.length > 0) {
+          await moveFiles(selectedFiles, destinationPath);
+          toast.success(`${selectedFiles.length} files moved`);
+          setBatchMoveOpen(false);
+          toggleSelectionMode(); // Exit selection mode
+      }
+  };
+
+  const handleSelectAll = () => {
+      const allKeys = displayFiles.map(f => {
+         const rootPath = ossConfig?.rootPath || '';
+         if (searchQuery) {
+             return rootPath + f.name;
+         } else {
+             const effectivePath = currentPath || rootPath;
+             return effectivePath + f.name;
+         }
+      });
+      selectAll(allKeys);
+  };
+
   const displayFiles = searchQuery ? searchResults : files;
 
   const trailingActions = (fileName: string, isFolder: boolean) => (
@@ -408,14 +471,15 @@ const FileManager = () => {
             </Button>
           )}
           <h1 className="font-bold text-lg truncate flex-1 tracking-tight text-glow">
-            {currentPath ? (
-              ossConfig?.rootPath && currentPath.startsWith(ossConfig.rootPath) 
-                ? (currentPath.replace(ossConfig.rootPath, '') || 'Home')
-                : currentPath
-            ) : 'Home'}
+            {currentPath && currentPath !== (ossConfig?.rootPath || '') 
+              ? (currentPath.endsWith('/') ? currentPath.slice(0, -1) : currentPath).split('/').pop() 
+              : 'Home'}
           </h1>
           <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={toggleSelectionMode} className={`h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors ${isSelectionMode ? 'bg-primary/20 text-primary' : ''}`}>
+            <CheckSquare className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon" onClick={() => setGlobalMenuOpen(true)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
             <MoreVertical className="h-5 w-5" />
@@ -429,6 +493,15 @@ const FileManager = () => {
             onChange={handleFileSelect}
           />
         </div>
+        {isSelectionMode ? (
+            <div className="flex items-center justify-between h-10 px-1">
+                <span className="text-sm font-medium">{selectedFiles.length} selected</span>
+                <div className="flex space-x-2">
+                    <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-8 text-xs">Select All</Button>
+                    <Button variant="ghost" size="sm" onClick={() => selectAll([])} className="h-8 text-xs">Deselect</Button>
+                </div>
+            </div>
+        ) : (
         <div className="relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
@@ -439,6 +512,7 @@ const FileManager = () => {
             onKeyDown={handleSearchKeyDown}
           />
         </div>
+        )}
       </div>
 
       {/* File List */}
@@ -473,6 +547,29 @@ const FileManager = () => {
                     onClick={() => handleItemClick(file)}
                     searchQuery={searchQuery}
                     isFolder={file.type === 'folder'}
+                    selectionMode={isSelectionMode}
+                    isSelected={(() => {
+                        const rootPath = ossConfig?.rootPath || '';
+                        let fullPath = '';
+                        if (searchQuery) {
+                            fullPath = rootPath + file.name;
+                        } else {
+                            const effectivePath = currentPath || rootPath;
+                            fullPath = effectivePath + file.name;
+                        }
+                        return selectedFiles.includes(fullPath);
+                    })()}
+                    onToggleSelect={() => {
+                        const rootPath = ossConfig?.rootPath || '';
+                        let fullPath = '';
+                        if (searchQuery) {
+                            fullPath = rootPath + file.name;
+                        } else {
+                            const effectivePath = currentPath || rootPath;
+                            fullPath = effectivePath + file.name;
+                        }
+                        toggleSelection(fullPath);
+                    }}
                 />
               </SwipeableListItem>
             ))}
@@ -499,6 +596,29 @@ const FileManager = () => {
                 )}
             </div>
         )}
+      </div>
+
+      {/* Batch Actions Bar */}
+      <div className={`fixed bottom-6 left-4 right-4 z-50 transition-transform duration-300 ${isSelectionMode && selectedFiles.length > 0 ? 'translate-y-0' : 'translate-y-[200%]'}`}>
+          <div className="bg-background/80 backdrop-blur-md border border-white/10 shadow-lg rounded-2xl p-2 flex justify-around items-center ring-1 ring-black/5">
+              <Button 
+                  variant="ghost" 
+                  className="flex-1 flex flex-col items-center justify-center h-14 space-y-1 hover:bg-destructive/10 hover:text-destructive rounded-xl transition-colors"
+                  onClick={() => setBatchDeleteOpen(true)}
+              >
+                  <Trash2 className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">Delete ({selectedFiles.length})</span>
+              </Button>
+              <div className="w-px h-8 bg-border/50"></div>
+              <Button 
+                  variant="ghost" 
+                  className="flex-1 flex flex-col items-center justify-center h-14 space-y-1 hover:bg-primary/10 hover:text-primary rounded-xl transition-colors"
+                  onClick={() => setBatchMoveOpen(true)}
+              >
+                  <Move className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">Move ({selectedFiles.length})</span>
+              </Button>
+          </div>
       </div>
 
       {/* Options Menu */}
@@ -664,6 +784,37 @@ const FileManager = () => {
         initialPath={currentPath}
         onUpload={handleUploadConfirm}
       />
+
+      {/* Batch Delete Dialog */}
+      <Dialog open={batchDeleteOpen} onOpenChange={setBatchDeleteOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Confirm Batch Deletion</DialogTitle>
+                <DialogDescription>
+                    Are you sure you want to delete {selectedFiles.length} items? This action cannot be undone.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setBatchDeleteOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleBatchDelete}>Delete</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Move Dialog */}
+      <Dialog open={batchMoveOpen} onOpenChange={setBatchMoveOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Batch Move to...</DialogTitle>
+                <DialogDescription>Select destination folder for {selectedFiles.length} items</DialogDescription>
+            </DialogHeader>
+            <FolderPicker 
+                currentPath={currentPath}
+                onSelect={handleBatchMove}
+                onCancel={() => setBatchMoveOpen(false)}
+            />
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
