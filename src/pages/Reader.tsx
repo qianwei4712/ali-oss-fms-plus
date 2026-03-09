@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
@@ -61,12 +61,7 @@ const Reader = () => {
   const [showControls, setShowControls] = useState(false);
   const lastScrollTopRef = useRef(0);
 
-  // Sync lastScrollTop when chapter changes to prevent jumpy controls
-  useEffect(() => {
-    if (scrollRef.current) {
-        lastScrollTopRef.current = 0;
-    }
-  }, [currentChapterIndex]);
+
 
   const handleScroll = () => {
     if (scrollRef.current) {
@@ -355,9 +350,11 @@ const Reader = () => {
   }, [currentChapterIndex, path, hasRestoredProgress]);
 
   // Scroll to top when chapter changes
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollTop = 0;
+        lastScrollTopRef.current = 0;
+        setScrollProgress(0);
     }
   }, [currentChapterIndex]);
 

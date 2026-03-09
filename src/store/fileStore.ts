@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { OSSObject, initOSSClient, getParentPath } from '@/utils/oss';
 import { useConfigStore } from './configStore';
-import { fileCacheStore } from '@/utils/storage';
+import { fileCacheStore, downloadedTxtStore, DownloadedFile } from '@/utils/storage';
 
 interface FileState {
   currentPath: string;
@@ -373,6 +373,19 @@ export const useFileStore = create<FileState>((set, get) => ({
       const client = initOSSClient(ossConfig);
       await client.copy(newKey, oldKey);
       await client.delete(oldKey);
+
+      // Update downloadedTxtStore if exists
+      const downloadedFile = await downloadedTxtStore.getItem<DownloadedFile>(oldKey);
+      if (downloadedFile) {
+          const newDownloadedFile: DownloadedFile = {
+              ...downloadedFile,
+              key: newKey,
+              name: newName
+          };
+          await downloadedTxtStore.setItem(newKey, newDownloadedFile);
+          await downloadedTxtStore.removeItem(oldKey);
+      }
+
       set({ isLoading: false });
       // get().fetchFiles(true); // No need to refresh if optimistic worked
     } catch (err: any) {
@@ -430,6 +443,18 @@ export const useFileStore = create<FileState>((set, get) => ({
       const client = initOSSClient(ossConfig);
       await client.copy(newKey, sourceKey);
       await client.delete(sourceKey);
+
+      // Update downloadedTxtStore if exists
+      const downloadedFile = await downloadedTxtStore.getItem<DownloadedFile>(sourceKey);
+      if (downloadedFile) {
+          const newDownloadedFile: DownloadedFile = {
+              ...downloadedFile,
+              key: newKey
+          };
+          await downloadedTxtStore.setItem(newKey, newDownloadedFile);
+          await downloadedTxtStore.removeItem(sourceKey);
+      }
+
       set({ isLoading: false });
       // get().fetchFiles(true);
     } catch (err: any) {
