@@ -77,7 +77,9 @@ const Reader = () => {
         // Calculate progress
         if (!isUserInteractingRef.current) {
             if (scrollHeight > clientHeight) {
-                const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+                let progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+                // Clamp progress between 0 and 100
+                progress = Math.min(100, Math.max(0, progress));
                 setScrollProgress(progress);
             } else {
                 setScrollProgress(0);
@@ -361,30 +363,56 @@ const Reader = () => {
     }
   }, [currentChapterIndex, path, hasRestoredProgress]);
 
+  const [isSwitching, setIsSwitching] = useState(false);
+
   // Scroll to top when chapter changes
   useLayoutEffect(() => {
-    if (scrollRef.current) {
+    if (!isSwitching && scrollRef.current) {
         scrollRef.current.scrollTop = 0;
-        lastScrollTopRef.current = 0;
-        setScrollProgress(0);
-        // Force scroll to top again after render to ensure it sticks
-        requestAnimationFrame(() => {
-             if (scrollRef.current) scrollRef.current.scrollTop = 0;
-        });
     }
-  }, [currentChapterIndex]);
+  }, [currentChapterIndex, isSwitching]);
 
-  const handleNextChapter = () => {
+  const handleNextChapter = (e?: React.MouseEvent) => {
+    if (e) {
+        e.preventDefault();
+        e.currentTarget.blur();
+    }
+
     if (currentChapterIndex < chapters.length - 1) {
-        setCurrentChapterIndex(prev => prev + 1);
+        // 1. Enter switching state (hides content, resets scroll physically)
+        setIsSwitching(true);
+        setScrollProgress(0);
+        
+        // 2. Wait a tick to let the UI update (empty state)
+        setTimeout(() => {
+            setCurrentChapterIndex(prev => prev + 1);
+            // 3. Exit switching state to show new content
+            // We use another timeout to ensure the state update has processed
+            requestAnimationFrame(() => {
+                setIsSwitching(false);
+            });
+        }, 10);
     } else {
         toast.info('This is the last chapter');
     }
   };
 
-  const handlePrevChapter = () => {
+  const handlePrevChapter = (e?: React.MouseEvent) => {
+    if (e) {
+        e.preventDefault();
+        e.currentTarget.blur();
+    }
+
     if (currentChapterIndex > 0) {
-        setCurrentChapterIndex(prev => prev - 1);
+        setIsSwitching(true);
+        setScrollProgress(0);
+        
+        setTimeout(() => {
+            setCurrentChapterIndex(prev => prev - 1);
+            requestAnimationFrame(() => {
+                setIsSwitching(false);
+            });
+        }, 10);
     } else {
         toast.info('This is the first chapter');
     }
@@ -433,8 +461,18 @@ const Reader = () => {
                                 currentChapterIndex === chapter.index ? "bg-accent font-medium" : ""
                             )}
                             onClick={() => {
-                                setCurrentChapterIndex(chapter.index);
                                 setIsTocOpen(false);
+                                if (currentChapterIndex === chapter.index) return;
+                                
+                                setIsSwitching(true);
+                                setScrollProgress(0);
+                                
+                                setTimeout(() => {
+                                    setCurrentChapterIndex(chapter.index);
+                                    requestAnimationFrame(() => {
+                                        setIsSwitching(false);
+                                    });
+                                }, 10);
                             }}
                         >
                             {chapter.title}
@@ -577,9 +615,10 @@ const Reader = () => {
         onScroll={handleScroll}
         onClick={() => setShowControls(!showControls)}
         className="h-full w-full overflow-y-auto overflow-x-hidden break-words overscroll-x-none touch-pan-y whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
-        style={{ fontSize: `${fontSize}px` }}
+        style={{ fontSize: `${fontSize}px`, overflowAnchor: 'none' }}
+        tabIndex={-1}
       >
-        {isLoading ? (
+        {isLoading || isSwitching ? (
           <div className="flex items-center justify-center h-full">
             <span className="animate-pulse">Loading content...</span>
           </div>
@@ -595,6 +634,7 @@ const Reader = () => {
                     variant="outline" 
                     onClick={handlePrevChapter}
                     disabled={currentChapterIndex === 0}
+                    tabIndex={0}
                 >
                     <ChevronLeft className="h-4 w-4 mr-2" /> Previous
                 </Button>
@@ -605,6 +645,7 @@ const Reader = () => {
                     variant="outline" 
                     onClick={handleNextChapter}
                     disabled={currentChapterIndex === chapters.length - 1}
+                    tabIndex={0}
                 >
                     Next <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
