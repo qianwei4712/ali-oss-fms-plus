@@ -4,7 +4,7 @@ import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
 import { useTheme } from '@/hooks/useTheme';
 import { initOSSClient, getParentPath } from '@/utils/oss';
-import { downloadedTxtStore } from '@/utils/storage';
+import { downloadedTxtStore, DownloadedFile } from '@/utils/storage';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
@@ -60,19 +60,27 @@ const Reader = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showControls, setShowControls] = useState(false);
   const lastScrollTopRef = useRef(0);
+  const isUserInteractingRef = useRef(false);
 
-
+  // Sync lastScrollTop when chapter changes to prevent jumpy controls
+  useEffect(() => {
+    if (scrollRef.current) {
+        lastScrollTopRef.current = 0;
+    }
+  }, [currentChapterIndex]);
 
   const handleScroll = () => {
     if (scrollRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
         
         // Calculate progress
-        if (scrollHeight > clientHeight) {
-            const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-            setScrollProgress(progress);
-        } else {
-            setScrollProgress(0);
+        if (!isUserInteractingRef.current) {
+            if (scrollHeight > clientHeight) {
+                const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+                setScrollProgress(progress);
+            } else {
+                setScrollProgress(0);
+            }
         }
 
         // Handle show/hide controls based on scroll direction
@@ -86,7 +94,7 @@ const Reader = () => {
         }
 
         // Threshold to prevent jitter (e.g. 10px)
-        if (Math.abs(scrollDelta) > 10) {
+        if (Math.abs(scrollDelta) > 10 && !isUserInteractingRef.current) {
             if (scrollDelta > 0) {
                 // Scrolling down -> hide controls
                 setShowControls(false);
@@ -94,6 +102,9 @@ const Reader = () => {
                 // Scrolling up -> show controls
                 setShowControls(true);
             }
+            lastScrollTopRef.current = currentScrollTop;
+        } else if (isUserInteractingRef.current) {
+            // Always update last scroll pos during interaction to prevent jump after release
             lastScrollTopRef.current = currentScrollTop;
         }
     }
@@ -133,8 +144,8 @@ const Reader = () => {
         
         toast.success('File deleted');
         navigate(-1);
-    } catch (e: any) {
-        toast.error('Failed to delete file: ' + e.message);
+    } catch (e: unknown) {
+        toast.error('Failed to delete file: ' + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -149,8 +160,8 @@ const Reader = () => {
         // Navigate to the new location or just go back
         // Going back seems safer as the current path is now invalid
         navigate(-1);
-    } catch (e: any) {
-        toast.error('Failed to move file: ' + e.message);
+    } catch (e: unknown) {
+        toast.error('Failed to move file: ' + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -171,8 +182,8 @@ const Reader = () => {
         
         // Navigate to new reader path
         navigate(`/reader/${encodeURIComponent(newKey)}`, { replace: true });
-    } catch (e: any) {
-        toast.error('Failed to rename file: ' + e.message);
+    } catch (e: unknown) {
+        toast.error('Failed to rename file: ' + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -191,8 +202,8 @@ const Reader = () => {
   // Sync theme with global settings or saved preference
   useEffect(() => {
     const savedTheme = localStorage.getItem('reader_theme_pref');
-    if (savedTheme) {
-        setTheme(savedTheme as any);
+    if (savedTheme && ['light', 'dark', 'sepia'].includes(savedTheme)) {
+        setTheme(savedTheme as 'light' | 'dark' | 'sepia');
     } else {
         setTheme(globalTheme);
     }
@@ -224,7 +235,7 @@ const Reader = () => {
         let rawContent = '';
 
         if (isOffline) {
-          const file = await downloadedTxtStore.getItem(key) as any;
+          const file = await downloadedTxtStore.getItem(key) as DownloadedFile | null;
           if (!file) throw new Error('File not found in downloads');
           rawContent = file.content;
         } else {
@@ -239,7 +250,7 @@ const Reader = () => {
              if (typeof raw === 'string') {
                rawContent = raw;
              } else {
-               const uint8 = new Uint8Array(raw as any);
+               const uint8 = new Uint8Array(raw as ArrayBuffer);
                const encoding = chardet.detect(uint8);
                const decoder = new TextDecoder(encoding || 'utf-8');
                rawContent = decoder.decode(uint8);
@@ -247,9 +258,9 @@ const Reader = () => {
           }
         }
         setContent(rawContent);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        toast.error('Failed to load file: ' + err.message);
+        toast.error('Failed to load file: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
         setIsLoading(false);
       }
@@ -381,7 +392,7 @@ const Reader = () => {
     <div className={cn("relative h-full w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn(
-        "absolute top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
+        "fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
         showControls ? "translate-y-0" : "-translate-y-full"
       )}>
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -600,7 +611,7 @@ const Reader = () => {
       {/* Progress Footer */}
       {!isLoading && (
         <div className={cn(
-            "absolute bottom-0 left-0 right-0 min-h-16 h-auto pb-[env(safe-area-inset-bottom)] bg-background/95 backdrop-blur border-t flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
+            "fixed bottom-0 left-0 right-0 min-h-16 h-auto pb-[env(safe-area-inset-bottom)] bg-background/95 backdrop-blur border-t flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
             showControls ? "translate-y-0" : "translate-y-full"
         )}>
             <span className="text-xs text-muted-foreground w-12 text-right mr-4 font-mono select-none">
@@ -611,6 +622,14 @@ const Reader = () => {
                 max={100}
                 step={1}
                 onValueChange={handleProgressChange}
+                onPointerDown={() => isUserInteractingRef.current = true}
+                onPointerUp={() => {
+                    isUserInteractingRef.current = false;
+                    // Force update scroll position reference to prevent jumps
+                    if (scrollRef.current) {
+                        lastScrollTopRef.current = scrollRef.current.scrollTop;
+                    }
+                }}
                 className="flex-1 cursor-pointer py-4"
             />
         </div>
