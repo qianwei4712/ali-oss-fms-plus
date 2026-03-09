@@ -63,40 +63,47 @@ const Reader = () => {
   const isUserInteractingRef = useRef(false);
 
   const handleScroll = useCallback(() => {
-    if (scrollRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-        
-        // Always update control visibility logic
-        const currentScrollTop = scrollTop;
-        const lastScrollTop = lastScrollTopRef.current;
-        const scrollDelta = currentScrollTop - lastScrollTop;
+    const scrollTop = window.scrollY;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = window.innerHeight;
+    
+    // Always update control visibility logic
+    const currentScrollTop = scrollTop;
+    const lastScrollTop = lastScrollTopRef.current;
+    const scrollDelta = currentScrollTop - lastScrollTop;
 
-        if (currentScrollTop < 0 || currentScrollTop > (scrollHeight - clientHeight)) {
-            return;
-        }
+    // Ignore bounce/rubber-banding at edges (especially on iOS)
+    if (currentScrollTop < 0 || currentScrollTop > (scrollHeight - clientHeight)) {
+        return;
+    }
 
-        // Only toggle controls if NOT interacting with slider
-        if (Math.abs(scrollDelta) > 10 && !isUserInteractingRef.current) {
-            if (scrollDelta > 0) {
-                setShowControls(false);
-            } else if (scrollDelta < 0) {
-                setShowControls(true);
-            }
-            lastScrollTopRef.current = currentScrollTop;
-        } else if (isUserInteractingRef.current) {
-            lastScrollTopRef.current = currentScrollTop;
+    // Only toggle controls if NOT interacting with slider
+    if (Math.abs(scrollDelta) > 10 && !isUserInteractingRef.current) {
+        if (scrollDelta > 0) {
+            setShowControls(false);
+        } else if (scrollDelta < 0) {
+            setShowControls(true);
         }
+        lastScrollTopRef.current = currentScrollTop;
+    } else if (isUserInteractingRef.current) {
+        lastScrollTopRef.current = currentScrollTop;
+    }
 
-        // Calculate progress - ALWAYS update state to match reality
-        if (scrollHeight > clientHeight) {
-            let progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-            progress = Math.min(100, Math.max(0, progress));
-            setScrollProgress(progress);
-        } else {
-            setScrollProgress(0);
-        }
+    // Calculate progress - ALWAYS update state to match reality
+    if (scrollHeight > clientHeight) {
+        let progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+        progress = Math.min(100, Math.max(0, progress));
+        setScrollProgress(progress);
+    } else {
+        setScrollProgress(0);
     }
   }, []);
+
+  // Bind window scroll event
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const handleProgressChange = useCallback((value: number[]) => {
     const newProgress = value[0];
@@ -107,14 +114,16 @@ const Reader = () => {
     // Update local state
     setScrollProgress(newProgress);
     
-    if (scrollRef.current) {
-        const { scrollHeight, clientHeight } = scrollRef.current;
-        const targetScrollTop = (newProgress / 100) * (scrollHeight - clientHeight);
-        
-        // Directly set scroll position
-        scrollRef.current.scrollTop = targetScrollTop;
-        lastScrollTopRef.current = targetScrollTop;
-    }
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = window.innerHeight;
+    const targetScrollTop = (newProgress / 100) * (scrollHeight - clientHeight);
+    
+    // Directly set scroll position
+    window.scrollTo({
+        top: targetScrollTop,
+        behavior: 'auto' // Instant jump to prevent fighting with slider
+    });
+    lastScrollTopRef.current = targetScrollTop;
   }, []);
 
   // Auto-scroll to active chapter in TOC
@@ -359,8 +368,8 @@ const Reader = () => {
 
   // Scroll to top when chapter changes
   useLayoutEffect(() => {
-    if (!isSwitching && scrollRef.current) {
-        scrollRef.current.scrollTop = 0;
+    if (!isSwitching) {
+        window.scrollTo(0, 0);
     }
   }, [currentChapterIndex, isSwitching]);
 
@@ -414,7 +423,7 @@ const Reader = () => {
   const currentChapterTitle = chapters[currentChapterIndex]?.title || '';
 
   return (
-    <div className={cn("relative h-[100dvh] w-full overflow-hidden transition-colors duration-300 bg-background text-foreground", theme)}>
+    <div className={cn("relative min-h-[100dvh] w-full transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn(
         "fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
@@ -604,9 +613,8 @@ const Reader = () => {
       {/* Content */}
       <div 
         ref={scrollRef}
-        onScroll={handleScroll}
         onClick={() => setShowControls(!showControls)}
-        className="h-full w-full overflow-y-auto overflow-x-hidden break-words overscroll-x-none touch-pan-y whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
+        className="min-h-[100dvh] w-full break-words overscroll-x-none touch-pan-y whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
         style={{ fontSize: `${fontSize}px`, overflowAnchor: 'none' }}
         tabIndex={-1}
       >
