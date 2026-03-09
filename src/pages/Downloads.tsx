@@ -62,21 +62,21 @@ const Downloads = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-muted/30">
-      <div className="p-4 glass sticky top-0 z-10 flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight">Downloads</h1>
-        <div className="text-xs text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-full">
+    <div className="flex flex-col min-h-full px-4 pt-4">
+      <div className="px-4 py-3 mb-6 glass-panel rounded-2xl sticky top-4 z-40 border border-white/10 shadow-lg ring-1 ring-black/5 flex items-center justify-between">
+        <h1 className="text-lg font-bold tracking-tight text-glow">Downloads</h1>
+        <div className="text-xs text-primary-foreground font-medium bg-primary px-3 py-1 rounded-full shadow-sm">
             {files.length} items
         </div>
       </div>
       
-      <div className="flex-1 p-4 pb-24 space-y-3">
+      <div className="flex-1 pb-32 space-y-3">
         {isLoading ? (
-          [1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
+          [1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-2xl glass-card" />)
         ) : files.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
-             <div className="p-4 bg-muted rounded-full">
-                <FileText className="h-8 w-8 opacity-50" />
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4 glass-card rounded-3xl m-4">
+             <div className="p-4 bg-primary/10 rounded-full">
+                <FileText className="h-8 w-8 text-primary opacity-50" />
              </div>
              <p>No downloaded files</p>
           </div>
@@ -84,16 +84,16 @@ const Downloads = () => {
           files.map((file) => (
             <div 
               key={file.key} 
-              className="group border border-border/50 rounded-xl p-4 flex items-center justify-between bg-card hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.99]"
+              className="group relative glass-card rounded-xl px-3 py-2.5 flex items-center justify-between hover:shadow-lg hover:bg-card/60 transition-all duration-300 cursor-pointer overflow-hidden border border-white/5 ring-1 ring-white/5 hover:ring-primary/20 hover:border-primary/20"
               onClick={() => handleOpen(file.key)}
             >
-              <div className="flex items-center space-x-4 overflow-hidden flex-1">
-                <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
-                  <FileText className="h-6 w-6" />
+              <div className="flex items-center space-x-3 overflow-hidden flex-1 z-10">
+                <div className="p-2 bg-primary/20 rounded-lg text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+                  <FileText className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate text-foreground">{file.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="font-semibold truncate text-sm text-foreground group-hover:text-primary transition-colors">{file.name}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     {formatFileSize(file.size)} • {formatDate(file.downloadTime)}
                   </p>
                 </div>
@@ -101,11 +101,12 @@ const Downloads = () => {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 z-10 transition-colors h-8 w-8"
                 onClick={(e) => handleDelete(file.key, e)}
               >
-                <Trash2 className="h-5 w-5" />
+                <Trash2 className="h-4 w-4" />
               </Button>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
             </div>
           ))
         )}

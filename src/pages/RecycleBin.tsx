@@ -223,12 +223,12 @@ const RecycleBin = () => {
   );
 
   return (
-    <div className="flex flex-col min-h-full bg-muted/30">
-      <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2 shadow-sm">
-        <Button variant="ghost" size="icon" onClick={handleBack} className="hover:bg-primary/10 hover:text-primary">
+    <div className="flex flex-col min-h-full px-4 pt-4 pb-32">
+      <div className="px-4 py-3 mb-6 glass-panel rounded-2xl sticky top-4 z-40 border border-white/10 shadow-lg ring-1 ring-black/5 flex items-center space-x-2">
+        <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="font-semibold text-lg truncate flex-1 tracking-tight">
+        <h1 className="font-bold text-lg truncate flex-1 tracking-tight text-glow">
             Recycle Bin
         </h1>
         <div className="flex items-center space-x-1">
@@ -240,26 +240,26 @@ const RecycleBin = () => {
                     setConfirmOpen(true);
                 }}
                 title="Empty Recycle Bin"
-                className="hover:bg-destructive/10 hover:text-destructive"
+                className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive rounded-xl transition-colors"
             >
                 <Trash2 className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => fetchFiles(currentPath)} className="hover:bg-primary/10 hover:text-primary">
+            <Button variant="ghost" size="icon" onClick={() => fetchFiles(currentPath)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
         </div>
       </div>
 
-      <div className="flex-1 p-4 space-y-3">
+      <div className="flex-1 space-y-3">
         {isLoading && files.length === 0 ? (
            <div className="space-y-4">
-             <Skeleton className="h-16 w-full rounded-xl" />
-             <Skeleton className="h-16 w-full rounded-xl" />
+             <Skeleton className="h-20 w-full rounded-2xl glass-card" />
+             <Skeleton className="h-20 w-full rounded-2xl glass-card" />
            </div>
         ) : error ? (
            <div className="p-4 text-center text-destructive">{error}</div>
         ) : files.length === 0 ? (
-           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4">
+           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground space-y-4 glass-card rounded-3xl m-4">
               <div className="p-4 bg-muted rounded-full">
                  <Trash2 className="h-8 w-8 opacity-50" />
               </div>
@@ -273,23 +273,24 @@ const RecycleBin = () => {
                     trailingActions={trailingActions(file)}
                 >
                     <div 
-                        className="w-full p-4 border border-border/50 bg-card rounded-xl flex items-center space-x-4 active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        className="group relative w-full px-3 py-2.5 mb-2 border border-white/5 bg-card/40 backdrop-blur-md rounded-xl flex items-center space-x-3 active:scale-[0.98] transition-all duration-200 shadow-sm hover:shadow-lg hover:bg-card/60 cursor-pointer overflow-hidden ring-1 ring-white/5 hover:ring-primary/20 hover:border-primary/20"
                         onClick={() => file.type === 'folder' ? handleFolderClick(file.name) : null}
                     >
-                        <div className={`p-2.5 rounded-xl ${file.type === 'folder' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                        <div className={`p-2 rounded-lg transition-colors duration-300 ${file.type === 'folder' ? 'bg-primary/20 text-primary group-hover:bg-primary group-hover:text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-secondary group-hover:text-foreground'}`}>
                             {file.type === 'folder' ? (
-                                <Folder className="h-6 w-6" />
+                                <Folder className="h-5 w-5" />
                             ) : (
-                                <FileText className="h-6 w-6" />
+                                <FileText className="h-5 w-5" />
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate text-foreground">{file.name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="font-semibold truncate text-sm text-foreground group-hover:text-primary transition-colors">{file.name}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
                                 {file.type === 'file' ? `${formatFileSize(file.size)} • ` : ''}
                                 {formatDate(file.lastModified)}
                             </p>
                         </div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
                     </div>
                 </SwipeableListItem>
              ))}

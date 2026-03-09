@@ -73,45 +73,47 @@ const OSSConfig = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-muted/30 pb-24">
-      <div className="p-4 glass sticky top-0 z-10 flex items-center space-x-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} className="hover:bg-primary/10 hover:text-primary">
-          <ArrowLeft className="h-6 w-6" />
+    <div className="flex flex-col min-h-full px-4 pt-4 pb-32">
+      <div className="px-4 py-3 mb-6 glass-panel rounded-2xl sticky top-4 z-40 border border-white/10 shadow-lg ring-1 ring-black/5 flex items-center space-x-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/settings')} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
+          <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold tracking-tight">OSS Configuration</h1>
+        <h1 className="text-lg font-bold tracking-tight text-glow">OSS Configuration</h1>
       </div>
 
-      <div className="p-4 space-y-6">
-        <Card className="border-border/50 shadow-sm rounded-xl">
-        <CardHeader>
-          <CardTitle>Credentials & Paths</CardTitle>
+      <div className="space-y-6">
+        <Card className="glass-card border-white/10 shadow-sm rounded-2xl overflow-hidden">
+        <CardHeader className="border-b border-white/5 pb-4">
+          <CardTitle className="text-lg">Credentials & Paths</CardTitle>
           <CardDescription>
             Enter your Aliyun OSS credentials.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 pt-6">
           <div className="space-y-2">
-            <Label htmlFor="region">Region</Label>
+            <Label htmlFor="region" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Region</Label>
             <Input 
               id="region" 
               name="region" 
               placeholder="oss-cn-hangzhou" 
               value={formData.region} 
               onChange={handleChange} 
+              className="bg-secondary/20 border-white/10 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-xl"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bucket">Bucket Name</Label>
+            <Label htmlFor="bucket" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bucket Name</Label>
             <Input 
               id="bucket" 
               name="bucket" 
               placeholder="my-bucket" 
               value={formData.bucket} 
               onChange={handleChange} 
+              className="bg-secondary/20 border-white/10 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-xl"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="accessKeyId">Access Key ID</Label>
+            <Label htmlFor="accessKeyId" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Access Key ID</Label>
             <Input 
               id="accessKeyId" 
               name="accessKeyId" 
@@ -119,10 +121,11 @@ const OSSConfig = () => {
               placeholder="LTAI..." 
               value={formData.accessKeyId} 
               onChange={handleChange} 
+              className="bg-secondary/20 border-white/10 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-xl"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="accessKeySecret">Access Key Secret</Label>
+            <Label htmlFor="accessKeySecret" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Access Key Secret</Label>
             <Input 
               id="accessKeySecret" 
               name="accessKeySecret" 
@@ -130,32 +133,37 @@ const OSSConfig = () => {
               placeholder="Secret..." 
               value={formData.accessKeySecret} 
               onChange={handleChange} 
+              className="bg-secondary/20 border-white/10 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-xl"
             />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="rootPath">Normal File Path (Optional)</Label>
-            <Input 
-              id="rootPath" 
-              name="rootPath" 
-              placeholder="e.g. normal/" 
-              value={formData.rootPath} 
-              onChange={handleChange} 
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rootPath" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Root Path</Label>
+              <Input 
+                id="rootPath" 
+                name="rootPath" 
+                placeholder="normal/" 
+                value={formData.rootPath} 
+                onChange={handleChange} 
+                className="bg-secondary/20 border-white/10 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-xl"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="recyclePath">Recycle Bin Path (Optional)</Label>
-            <Input 
-              id="recyclePath" 
-              name="recyclePath" 
-              placeholder="e.g. trash/" 
-              value={formData.recyclePath} 
-              onChange={handleChange} 
-            />
+            <div className="space-y-2">
+              <Label htmlFor="recyclePath" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recycle Path</Label>
+              <Input 
+                id="recyclePath" 
+                name="recyclePath" 
+                placeholder="trash/" 
+                value={formData.recyclePath} 
+                onChange={handleChange} 
+                className="bg-secondary/20 border-white/10 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-xl"
+              />
+            </div>
           </div>
           
-          <Button className="w-full" onClick={handleSave} disabled={isLoading}>
+          <Button className="w-full rounded-xl h-11 font-semibold shadow-lg shadow-primary/20" onClick={handleSave} disabled={isLoading}>
             {isLoading ? 'Testing Connection...' : (
               <>
                 <Save className="mr-2 h-4 w-4" /> Save & Connect

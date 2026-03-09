@@ -62,10 +62,10 @@ const FileRow = memo(({
   isFolder: boolean;
 }) => (
   <div 
-    className="w-full px-4 py-3 border-b border-border/40 bg-background flex items-center space-x-3 active:bg-muted/50 transition-colors duration-200 cursor-pointer"
+    className="group relative w-full px-3 py-2.5 mb-2 glass-card rounded-xl flex items-center space-x-3 cursor-pointer overflow-hidden border border-white/5 ring-1 ring-white/5 hover:ring-primary/20 hover:border-primary/20"
     onClick={onClick}
   >
-    <div className={`p-2 rounded-lg ${isFolder ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+    <div className={`p-2 rounded-lg transition-all duration-300 ${isFolder ? 'bg-primary/20 text-primary group-hover:bg-primary group-hover:text-primary-foreground' : 'bg-secondary/50 text-secondary-foreground group-hover:bg-secondary group-hover:text-foreground'}`}>
       {isFolder ? (
         <Folder className="h-5 w-5" />
       ) : (
@@ -73,15 +73,17 @@ const FileRow = memo(({
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className="font-medium truncate text-[13px] text-foreground leading-tight">{file.name.split('/').pop()}</p>
+      <p className="font-semibold truncate text-sm text-foreground leading-tight group-hover:text-primary transition-colors">{file.name.split('/').pop()}</p>
       <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center leading-none">
         {!isFolder ? `${formatFileSize(file.size)} • ` : ''}
         {formatDate(file.lastModified)}
         {searchQuery && <span className="ml-2 opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
       </p>
     </div>
-    {!isFolder && <MoreVertical className="h-3.5 w-3.5 text-muted-foreground/50" />}
-    {isFolder && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />}
+    {!isFolder && <MoreVertical className="h-4 w-4 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity" />}
+    {isFolder && <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />}
+    
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
   </div>
 ));
 
@@ -360,27 +362,27 @@ const FileManager = () => {
   }, [searchQuery, ossConfig, currentPath, setCurrentPath, setSearchQuery]);
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full px-4 pt-4">
       {/* Top Bar */}
-      <div className="px-4 py-2 space-y-1.5 glass z-10 sticky top-0 border-b">
-        <div className="flex items-center space-x-2">
+      <div className="px-4 py-3 mb-6 glass-panel rounded-2xl sticky top-4 z-40 border border-white/10 shadow-lg ring-1 ring-black/5">
+        <div className="flex items-center space-x-3 mb-3">
           {currentPath && currentPath !== (ossConfig?.rootPath || '') && (
-            <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
+              <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="font-semibold text-base truncate flex-1 tracking-tight">
+          <h1 className="font-bold text-lg truncate flex-1 tracking-tight text-glow">
             {currentPath ? (
               ossConfig?.rootPath && currentPath.startsWith(ossConfig.rootPath) 
                 ? (currentPath.replace(ossConfig.rootPath, '') || 'Home')
                 : currentPath
             ) : 'Home'}
           </h1>
-          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
+            <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setGlobalMenuOpen(true)} className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
-            <MoreVertical className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={() => setGlobalMenuOpen(true)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
+            <MoreVertical className="h-5 w-5" />
           </Button>
           <input 
             type="file" 
@@ -391,11 +393,11 @@ const FileManager = () => {
             onChange={handleFileSelect}
           />
         </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
             placeholder="Search files..." 
-            className="h-8 pl-8 text-sm bg-muted/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-200" 
+            className="h-10 pl-10 text-sm bg-secondary/30 border-transparent focus:bg-background/80 focus:border-primary/30 focus:ring-2 focus:ring-primary/20 rounded-xl transition-all duration-300 backdrop-blur-sm" 
             value={searchInputValue}
             onChange={(e) => setSearchInputValue(e.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -406,7 +408,7 @@ const FileManager = () => {
       {/* File List */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 pb-24"
+        className="flex-1 pb-32 space-y-1"
       >
         {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">

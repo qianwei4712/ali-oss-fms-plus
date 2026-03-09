@@ -16,9 +16,9 @@ const Downloads = lazy(() => import('@/pages/Downloads'));
 
 const MainLayout = () => {
   return (
-    <div className="flex flex-col h-[100dvh] bg-background text-foreground overflow-hidden">
-      <main className="flex-1 overflow-y-auto relative no-scrollbar pb-14">
-        <Suspense fallback={<div className="p-4 space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-64 w-full" /></div>}>
+    <div className="flex flex-col h-[100dvh] overflow-hidden">
+      <main className="flex-1 overflow-y-auto relative no-scrollbar pb-24">
+        <Suspense fallback={<div className="p-4 space-y-4"><Skeleton className="h-12 w-full glass-card" /><Skeleton className="h-64 w-full glass-card" /></div>}>
           <Outlet />
         </Suspense>
       </main>

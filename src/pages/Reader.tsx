@@ -426,17 +426,17 @@ const Reader = () => {
     <div className={cn("relative min-h-[100dvh] w-full transition-colors duration-300 bg-background text-foreground", theme)}>
       {/* Header (overlay/fixed) */}
       <div className={cn(
-        "fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-50 bg-background/95 backdrop-blur border-b transition-transform duration-300 ease-in-out",
-        showControls ? "translate-y-0" : "-translate-y-full"
+        "fixed top-4 left-4 right-4 h-14 flex items-center px-4 z-50 glass-panel rounded-2xl border border-white/10 shadow-lg ring-1 ring-black/5 transition-transform duration-300 ease-in-out",
+        showControls ? "translate-y-0" : "-translate-y-[200%]"
       )}>
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="ml-2 flex-1 min-w-0">
-            <h1 className="font-medium truncate text-sm">
+        <div className="ml-3 flex-1 min-w-0">
+            <h1 className="font-bold truncate text-sm text-glow">
                 {path ? decodeURIComponent(path).split('/').pop() : 'Reader'}
             </h1>
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate font-medium opacity-80">
                 {currentChapterTitle} ({currentChapterIndex + 1}/{chapters.length})
             </p>
         </div>
@@ -444,7 +444,7 @@ const Reader = () => {
         {/* Table of Contents Trigger */}
         <Drawer open={isTocOpen} onOpenChange={setIsTocOpen}>
             <DrawerTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
                     <List className="h-5 w-5" />
                 </Button>
             </DrawerTrigger>
@@ -486,11 +486,11 @@ const Reader = () => {
         {/* Settings Trigger */}
         <Drawer>
           <DrawerTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
               <SettingsIcon className="h-5 w-5" />
             </Button>
           </DrawerTrigger>
-          <DrawerContent className={cn("text-foreground", theme)}>
+          <DrawerContent className={cn("text-foreground glass-panel border-t border-white/10", theme)}>
             <DrawerHeader>
               <DrawerTitle>Reader Settings</DrawerTitle>
             </DrawerHeader>
@@ -558,11 +558,11 @@ const Reader = () => {
         {/* Actions Trigger */}
         <Drawer open={isActionsOpen} onOpenChange={setIsActionsOpen}>
             <DrawerTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
                     <MoreVertical className="h-5 w-5" />
                 </Button>
             </DrawerTrigger>
-            <DrawerContent className={cn("text-foreground pb-6", theme)}>
+            <DrawerContent className={cn("text-foreground pb-6 glass-panel border-t border-white/10", theme)}>
                 <DrawerHeader className="text-left">
                     <DrawerTitle>File Actions</DrawerTitle>
                 </DrawerHeader>
@@ -657,10 +657,10 @@ const Reader = () => {
       {/* Progress Footer */}
       {!isLoading && (
         <div className={cn(
-            "fixed bottom-0 left-0 right-0 min-h-16 h-auto pb-[env(safe-area-inset-bottom)] bg-background/95 backdrop-blur border-t flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
-            showControls ? "translate-y-0" : "translate-y-full"
+            "fixed bottom-4 left-4 right-4 min-h-16 h-auto pb-0 glass-panel rounded-2xl border border-white/10 shadow-lg ring-1 ring-black/5 flex items-center px-4 z-50 transition-transform duration-300 ease-in-out",
+            showControls ? "translate-y-0" : "translate-y-[200%]"
         )}>
-            <span className="text-xs text-muted-foreground w-12 text-right mr-4 font-mono select-none">
+            <span className="text-xs text-muted-foreground w-12 text-right mr-4 font-mono select-none font-bold">
                 {Math.round(scrollProgress)}%
             </span>
             <Slider
