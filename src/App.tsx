@@ -14,7 +14,11 @@ const RecycleBin = lazy(() => import('@/pages/RecycleBin'));
 const Reader = lazy(() => import('@/pages/Reader'));
 const Downloads = lazy(() => import('@/pages/Downloads'));
 
+import { useUiStore } from '@/store/uiStore';
+
 const MainLayout = () => {
+  const { isNavBarVisible } = useUiStore();
+
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden">
       <main className="flex-1 overflow-y-auto relative no-scrollbar pb-24">
@@ -22,7 +26,9 @@ const MainLayout = () => {
           <Outlet />
         </Suspense>
       </main>
-      <BottomNav />
+      <div className={`transition-transform duration-300 ease-in-out ${isNavBarVisible ? 'translate-y-0' : 'translate-y-[200%]'}`}>
+        <BottomNav />
+      </div>
     </div>
   );
 };

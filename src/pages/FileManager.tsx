@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
+import { useUiStore } from '@/store/uiStore';
 import { downloadedTxtStore, DownloadedFile } from '@/utils/storage';
-import { initOSSClient, getParentPath, OSSObject, OSSConfig } from '@/utils/oss';
+import { initOSSClient, getParentPath, OSSObject } from '@/utils/oss';
 import { formatFileSize, formatDate } from '@/utils/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +44,6 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 import { FolderPicker } from '@/components/FolderPicker';
 import { RenameDialog } from '@/components/RenameDialog';
@@ -92,6 +92,43 @@ FileRow.displayName = 'FileRow';
 const FileManager = () => {
   const navigate = useNavigate();
   const { ossConfig, filenameCleanPatterns } = useConfigStore();
+  const { setNavBarVisible, isNavBarVisible } = useUiStore();
+  const lastScrollTopRef = useRef(0);
+
+  useEffect(() => {
+    setNavBarVisible(true);
+    
+    const handleScroll = (e: Event) => {
+        const target = e.target as HTMLElement;
+        const scrollTop = target.scrollTop;
+        const scrollDelta = scrollTop - lastScrollTopRef.current;
+        
+        // Ignore small scrolls
+        if (Math.abs(scrollDelta) > 10) {
+            if (scrollDelta > 0 && scrollTop > 20) {
+                // Scrolling down
+                setNavBarVisible(false);
+            } else if (scrollDelta < 0) {
+                // Scrolling up
+                setNavBarVisible(true);
+            }
+        }
+        lastScrollTopRef.current = scrollTop;
+    };
+
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+        mainElement.addEventListener('scroll', handleScroll);
+    }
+
+    return () => {
+        if (mainElement) {
+            mainElement.removeEventListener('scroll', handleScroll);
+        }
+        setNavBarVisible(true);
+    };
+  }, [setNavBarVisible]);
+
   const { 
     currentPath, 
     files, 
@@ -478,7 +515,7 @@ const FileManager = () => {
                 onClick={() => {
                     if (selectedFile) {
                         if (selectedFile.name.endsWith('.txt')) {
-                            let fullPath = searchQuery ? (ossConfig?.rootPath || '') + selectedFile.name : currentPath + selectedFile.name;
+                            const fullPath = searchQuery ? (ossConfig?.rootPath || '') + selectedFile.name : currentPath + selectedFile.name;
                             navigate(`/reader/${encodeURIComponent(fullPath)}`);
                         } else {
                             toast.info('Only .txt files supported');
