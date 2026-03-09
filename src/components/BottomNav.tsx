@@ -1,15 +1,20 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Settings, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUiStore } from '@/store/uiStore';
 
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isNavBarVisible } = useUiStore();
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md h-16 glass-panel rounded-full flex items-center justify-around z-50 shadow-2xl border border-white/10 ring-1 ring-black/5">
+    <div className={cn(
+      "fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md h-16 glass-panel rounded-full flex items-center justify-around z-50 shadow-2xl border border-white/10 ring-1 ring-black/5 transition-transform duration-300 ease-in-out",
+      isNavBarVisible ? "translate-y-0 -translate-x-1/2" : "translate-y-[200%] -translate-x-1/2"
+    )}>
       <button
         onClick={() => navigate('/')}
         className={cn(

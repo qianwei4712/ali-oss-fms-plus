@@ -105,8 +105,8 @@ const FileManager = () => {
         
         // Ignore small scrolls
         if (Math.abs(scrollDelta) > 10) {
-            if (scrollDelta > 0 && scrollTop > 20) {
-                // Scrolling down
+            if (scrollDelta > 0 && scrollTop > 50) {
+                // Scrolling down and not at very top
                 setNavBarVisible(false);
             } else if (scrollDelta < 0) {
                 // Scrolling up
@@ -116,7 +116,7 @@ const FileManager = () => {
         lastScrollTopRef.current = scrollTop;
     };
 
-    const mainElement = document.querySelector('main');
+    const mainElement = document.getElementById('main-content');
     if (mainElement) {
         mainElement.addEventListener('scroll', handleScroll);
     }
@@ -401,7 +401,7 @@ const FileManager = () => {
   return (
     <div className="flex flex-col min-h-full px-4 pt-4">
       {/* Top Bar */}
-      <div className="px-4 py-3 mb-6 glass-panel rounded-2xl sticky top-4 z-40 border border-white/10 shadow-lg ring-1 ring-black/5">
+      <div className={`px-4 py-3 glass-panel rounded-2xl fixed top-4 left-4 right-4 z-40 border border-white/10 shadow-lg ring-1 ring-black/5 transition-transform duration-300 ease-in-out ${isNavBarVisible ? 'translate-y-0' : '-translate-y-[200%]'}`}>
         <div className="flex items-center space-x-3 mb-3">
           {currentPath && currentPath !== (ossConfig?.rootPath || '') && (
             <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
@@ -445,7 +445,7 @@ const FileManager = () => {
       {/* File List */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 pb-32 space-y-1"
+        className="flex-1 pb-32 space-y-1 mt-[136px]"
       >
         {(isLoading || isSearching) && displayFiles.length === 0 ? (
           <div className="p-4 space-y-4">
