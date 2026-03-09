@@ -63,11 +63,12 @@ const Reader = () => {
   const isUserInteractingRef = useRef(false);
 
   // Sync lastScrollTop when chapter changes to prevent jumpy controls
-  useEffect(() => {
-    if (scrollRef.current) {
-        lastScrollTopRef.current = 0;
-    }
-  }, [currentChapterIndex]);
+  // This logic is now handled in useLayoutEffect below
+  // useEffect(() => {
+  //   if (scrollRef.current) {
+  //       lastScrollTopRef.current = 0;
+  //   }
+  // }, [currentChapterIndex]);
 
   const handleScroll = () => {
     if (scrollRef.current) {
@@ -366,6 +367,10 @@ const Reader = () => {
         scrollRef.current.scrollTop = 0;
         lastScrollTopRef.current = 0;
         setScrollProgress(0);
+        // Force scroll to top again after render to ensure it sticks
+        requestAnimationFrame(() => {
+             if (scrollRef.current) scrollRef.current.scrollTop = 0;
+        });
     }
   }, [currentChapterIndex]);
 
@@ -621,9 +626,11 @@ const Reader = () => {
                 value={[scrollProgress]}
                 max={100}
                 step={1}
-                onValueChange={handleProgressChange}
-                onPointerDown={() => isUserInteractingRef.current = true}
-                onPointerUp={() => {
+                onValueChange={(vals) => {
+                    isUserInteractingRef.current = true;
+                    handleProgressChange(vals);
+                }}
+                onValueCommit={() => {
                     isUserInteractingRef.current = false;
                     // Force update scroll position reference to prevent jumps
                     if (scrollRef.current) {
