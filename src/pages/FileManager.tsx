@@ -80,7 +80,6 @@ const FileRow = memo(({
         {searchQuery && <span className="ml-2 opacity-50 block">{file.url ? getParentPath(file.name) : ''}</span>}
       </p>
     </div>
-    {!isFolder && <MoreVertical className="h-4 w-4 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity" />}
     {isFolder && <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />}
     
     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
@@ -91,7 +90,7 @@ FileRow.displayName = 'FileRow';
 
 const FileManager = () => {
   const navigate = useNavigate();
-  const { ossConfig, filenameCleanPatterns } = useConfigStore();
+  const { ossConfig } = useConfigStore();
   const { setNavBarVisible, isNavBarVisible } = useUiStore();
   const lastScrollTopRef = useRef(0);
 
