@@ -26,28 +26,35 @@ export const FolderPicker = ({
       setLoading(true);
       try {
         const client = initOSSClient(ossConfig);
-        const result = await client.list({
-          prefix: dirPath,
-          delimiter: '/',
-          ['max-keys']: 100,
-        }, {});
-
         const folderList: OSSObject[] = [];
-        if (result.prefixes) {
-          result.prefixes.forEach((prefix: string) => {
-              // Remove the current path from the name to get the display name
-              const name = prefix.replace(dirPath, '').replace(/\/$/, '');
-              if (name) {
-                  folderList.push({
-                      name: name,
-                      url: '',
-                      lastModified: '',
-                      size: 0,
-                      type: 'folder'
-                  });
-              }
-          });
-        }
+        let nextMarker: string | null = null;
+        
+        do {
+            const result: any = await client.list({
+              prefix: dirPath,
+              delimiter: '/',
+              'max-keys': 1000,
+              marker: nextMarker,
+            }, {});
+
+            if (result.prefixes) {
+              result.prefixes.forEach((prefix: string) => {
+                  // Remove the current path from the name to get the display name
+                  const name = prefix.replace(dirPath, '').replace(/\/$/, '');
+                  if (name) {
+                      folderList.push({
+                          name: name,
+                          url: '',
+                          lastModified: '',
+                          size: 0,
+                          type: 'folder'
+                      });
+                  }
+              });
+            }
+            nextMarker = result.nextMarker;
+        } while (nextMarker);
+        
         setFolders(folderList);
       } catch (err) {
         console.error(err);
