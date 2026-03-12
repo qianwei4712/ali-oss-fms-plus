@@ -2,7 +2,6 @@ import { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '@/store/configStore';
 import { useFileStore } from '@/store/fileStore';
-import { useTheme } from '@/hooks/useTheme';
 import { initOSSClient, getParentPath } from '@/utils/oss';
 import { downloadedTxtStore, DownloadedFile } from '@/utils/storage';
 import { Button } from '@/components/ui/button';
@@ -31,17 +30,12 @@ const Reader = () => {
   const [searchParams] = useSearchParams();
   const isOffline = searchParams.get('offline') === 'true';
   const navigate = useNavigate();
-  const { ossConfig } = useConfigStore();
+  const { ossConfig, theme, setTheme } = useConfigStore();
   const { deleteFiles, moveFile, renameFile } = useFileStore();
-  const { theme: globalTheme } = useTheme();
   
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState(16);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>(() => {
-    const saved = localStorage.getItem('reader_theme_pref');
-    return (saved as any) || globalTheme;
-  });
   
   // Chapter State
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -204,14 +198,7 @@ const Reader = () => {
   }, []);
 
   // Sync theme with global settings or saved preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('reader_theme_pref');
-    if (savedTheme && ['light', 'dark', 'sepia'].includes(savedTheme)) {
-        setTheme(savedTheme as 'light' | 'dark' | 'sepia');
-    } else {
-        setTheme(globalTheme);
-    }
-  }, [globalTheme]);
+  // Removed local theme sync logic as we now use global store directly
 
   const saveFontSize = (newSize: number) => {
     setFontSize(newSize);
@@ -220,7 +207,7 @@ const Reader = () => {
 
   const saveTheme = (newTheme: 'light' | 'dark' | 'sepia') => {
     setTheme(newTheme);
-    localStorage.setItem('reader_theme_pref', newTheme);
+    // localStorage.setItem('reader_theme_pref', newTheme); // No longer needed
   };
 
   const saveRegex = () => {
