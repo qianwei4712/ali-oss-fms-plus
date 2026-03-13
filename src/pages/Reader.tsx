@@ -13,7 +13,7 @@ import { RenameDialog } from '@/components/RenameDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine, Check } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine, Check, Download } from 'lucide-react';
 import jschardet from 'jschardet';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +49,47 @@ const Reader = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+
+  // Check if file is downloaded
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!path) return;
+      const key = decodeURIComponent(path);
+      try {
+        const file = await downloadedTxtStore.getItem(key);
+        setIsDownloaded(!!file);
+      } catch (e) {
+        console.error("Failed to check download status", e);
+      }
+    };
+    checkStatus();
+  }, [path]);
+
+  const handleDownload = async () => {
+    if (!path || !content) return;
+    const key = decodeURIComponent(path);
+    const fileName = key.split('/').pop() || 'unknown.txt';
+    
+    try {
+        const downloadedFile: DownloadedFile = {
+            key,
+            name: fileName,
+            content,
+            encoding: 'UTF-8', 
+            downloadTime: new Date().toISOString(),
+            size: new Blob([content]).size
+        };
+        
+        await downloadedTxtStore.setItem(key, downloadedFile);
+        setIsDownloaded(true);
+        toast.success('Downloaded to offline storage');
+        setIsActionsOpen(false);
+    } catch (e) {
+        toast.error('Failed to download: ' + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Progress restoration state
@@ -640,7 +681,7 @@ const Reader = () => {
                 <DrawerHeader className="text-left">
                     <DrawerTitle>File Actions</DrawerTitle>
                 </DrawerHeader>
-                <div className="p-4 grid grid-cols-3 gap-3">
+                <div className="p-4 grid grid-cols-2 gap-3">
                     <Button 
                         variant="outline" 
                         className="flex flex-col items-center justify-center h-20 space-y-2 border-primary/10 bg-primary/5 hover:bg-primary/10 hover:text-primary transition-all rounded-xl text-primary" 
@@ -662,6 +703,19 @@ const Reader = () => {
                     >
                         <Move className="h-6 w-6" />
                         <span className="text-xs font-medium">Move</span>
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        className="flex flex-col items-center justify-center h-20 space-y-2 border-success/10 bg-success/5 hover:bg-success/10 hover:text-success transition-all rounded-xl text-success disabled:opacity-50 disabled:cursor-not-allowed" 
+                        disabled={isDownloaded}
+                        onClick={() => {
+                            if (!isDownloaded) {
+                                handleDownload();
+                            }
+                        }}
+                    >
+                        {isDownloaded ? <Check className="h-6 w-6" /> : <Download className="h-6 w-6" />}
+                        <span className="text-xs font-medium">{isDownloaded ? 'Downloaded' : 'Download'}</span>
                     </Button>
                     <Button 
                         variant="outline" 
