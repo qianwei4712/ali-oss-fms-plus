@@ -136,9 +136,9 @@ const Reader = () => {
     try {
         const key = decodeURIComponent(path);
         
-        if (!isOffline) {
-            await deleteFiles([key]);
-        }
+        // Always attempt to delete from OSS if config is available
+        // This satisfies the requirement to delete both remote and local
+        await deleteFiles([key]);
         
         await downloadedTxtStore.removeItem(key);
         
