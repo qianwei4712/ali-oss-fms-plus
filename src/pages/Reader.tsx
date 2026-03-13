@@ -13,8 +13,8 @@ import { RenameDialog } from '@/components/RenameDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine } from 'lucide-react';
-import chardet from 'chardet';
+import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, Eye, List, ChevronLeft, ChevronRight, MoreVertical, Trash2, Move, FilePenLine, Check } from 'lucide-react';
+import jschardet from 'jschardet';
 import { cn } from '@/lib/utils';
 
 interface Chapter {
@@ -34,6 +34,8 @@ const Reader = () => {
   const { deleteFiles, moveFile, renameFile } = useFileStore();
   
   const [content, setContent] = useState('');
+  const [rawBuffer, setRawBuffer] = useState<ArrayBuffer | null>(null);
+  const [encoding, setEncoding] = useState('auto');
   const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState(16);
   
@@ -223,42 +225,107 @@ const Reader = () => {
       setIsLoading(true);
 
       try {
-        let rawContent = '';
+        let buffer: ArrayBuffer;
 
         if (isOffline) {
           const file = await downloadedTxtStore.getItem(key) as DownloadedFile | null;
           if (!file) throw new Error('File not found in downloads');
-          rawContent = file.content;
-        } else {
-          if (!ossConfig) {
-            navigate('/settings');
-            return;
-          }
-          const client = initOSSClient(ossConfig);
-          const result = await client.get(key);
-          if (result.content) {
-             const raw = result.content;
-             if (typeof raw === 'string') {
-               rawContent = raw;
-             } else {
-               const uint8 = new Uint8Array(raw as ArrayBuffer);
-               const encoding = chardet.detect(uint8);
-               const decoder = new TextDecoder(encoding || 'utf-8');
-               rawContent = decoder.decode(uint8);
-             }
-          }
+          // If offline file was saved as string, we need to convert back to buffer for consistent handling
+          // But wait, offline files might have been saved already decoded.
+          // Let's check storage format. Currently we save 'content' as string.
+          // This means if it was saved wrong, it's wrong forever.
+          // Ideally we should save raw buffer or base64.
+          // But for now, let's assume if it's string, it's already decoded (or double decoded if wrong).
+          // To support re-decoding, we might need to re-fetch or change storage to Blob/ArrayBuffer.
+          // Given current constraints, let's just use the string content directly if offline.
+          // TODO: Upgrade offline storage to store Blob/ArrayBuffer for better encoding support.
+          setContent(file.content);
+          setRawBuffer(null); // No raw buffer for offline files (yet)
+          setIsLoading(false);
+          return;
+        } 
+        
+        if (!ossConfig) {
+          navigate('/settings');
+          return;
         }
-        setContent(rawContent);
+        
+        const client = initOSSClient(ossConfig);
+        const url = client.signatureUrl(key, { expires: 3600 });
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+        }
+        
+        buffer = await response.arrayBuffer();
+        setRawBuffer(buffer);
+        // Content decoding will be handled by the effect depending on rawBuffer and encoding state
       } catch (err: unknown) {
         console.error(err);
         toast.error('Failed to load file: ' + (err instanceof Error ? err.message : String(err)));
-      } finally {
         setIsLoading(false);
       }
     };
 
     loadContent();
   }, [path, isOffline, ossConfig, navigate]);
+
+  // Handle Decoding
+  useEffect(() => {
+    if (!rawBuffer) return;
+    
+    try {
+        const uint8Array = new Uint8Array(rawBuffer);
+        let targetEncoding = encoding;
+
+        if (targetEncoding === 'auto') {
+            // Detect encoding using a larger sample
+            let binaryString = '';
+            // Check up to 50KB to be more accurate
+            const len = Math.min(uint8Array.length, 1024 * 50); 
+            for (let i = 0; i < len; i++) {
+                binaryString += String.fromCharCode(uint8Array[i]);
+            }
+            
+            const detected = jschardet.detect(binaryString);
+            console.log('Detected encoding:', detected);
+            
+            targetEncoding = detected.encoding || 'utf-8';
+            
+            // Smart corrections
+            const upper = targetEncoding.toUpperCase();
+            if (['GB2312', 'GBK'].includes(upper)) {
+                targetEncoding = 'GB18030';
+            } else if (upper === 'WINDOWS-1252' && detected.confidence < 0.95) {
+                // Windows-1252 is often a misinterpretation of GBK
+                console.warn('Low confidence Windows-1252 detected, attempting GB18030 fallback');
+                targetEncoding = 'GB18030';
+            } else if (upper === 'ISO-8859-1' && detected.confidence < 0.95) {
+                 // Similar for ISO-8859-1
+                 targetEncoding = 'GB18030';
+            }
+        }
+
+        console.log(`Decoding with: ${targetEncoding}`);
+        
+        try {
+            const decoder = new TextDecoder(targetEncoding);
+            const decoded = decoder.decode(uint8Array);
+            setContent(decoded);
+        } catch (e) {
+            console.error(`Failed to decode with ${targetEncoding}`, e);
+            // Fallback to UTF-8
+            const decoder = new TextDecoder('utf-8');
+            setContent(decoder.decode(uint8Array));
+            toast.error(`Failed to decode with ${targetEncoding}, falling back to UTF-8`);
+        }
+    } catch (e) {
+        console.error("Decoding error", e);
+        toast.error("Error decoding file content");
+    } finally {
+        setIsLoading(false);
+    }
+  }, [rawBuffer, encoding]);
 
   // Reset restored state when path changes
   useEffect(() => {
@@ -520,6 +587,26 @@ const Reader = () => {
                   >
                     <Eye className="h-4 w-4 mr-2" /> Sepia
                   </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Encoding</span>
+                <div className="grid grid-cols-2 gap-2">
+                    {['auto', 'utf-8', 'GB18030', 'Big5'].map((enc) => (
+                        <Button
+                            key={enc}
+                            variant={encoding === enc ? 'default' : 'outline'}
+                            className="justify-between"
+                            onClick={() => {
+                                setEncoding(enc);
+                                setIsLoading(true); // Trigger loading state for visual feedback
+                            }}
+                        >
+                            {enc === 'auto' ? 'Auto Detect' : enc}
+                            {encoding === enc && <Check className="h-4 w-4 ml-2" />}
+                        </Button>
+                    ))}
                 </div>
               </div>
 

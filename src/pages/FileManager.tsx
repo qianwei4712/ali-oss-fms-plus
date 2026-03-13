@@ -51,6 +51,7 @@ import {
 import { FolderPicker } from '@/components/FolderPicker';
 import { RenameDialog } from '@/components/RenameDialog';
 import { UploadDialog } from '@/components/UploadDialog';
+import jschardet from 'jschardet';
 
 // Memoized File Row Component
 const FileRow = memo(({ 
@@ -294,17 +295,45 @@ const FileManager = () => {
     try {
       toast.loading('Downloading...');
       const client = initOSSClient(ossConfig);
-      const result = await client.get(key);
       
-      const content = result.content.toString();
-      let size = 0;
-      // headers type in ali-oss is sometimes loose, cast to any to avoid strict mode error
-      const headers = result.res && result.res.headers ? (result.res.headers as any) : {};
-      if (headers['content-length']) {
-        size = parseInt(headers['content-length'] as string);
+      // Use signatureUrl + fetch to handle encoding correctly
+      const url = client.signatureUrl(key, { expires: 3600 });
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
       }
-      if (!size) {
-        size = new Blob([content]).size;
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const size = arrayBuffer.byteLength;
+      
+      // Detect encoding
+      let binaryString = '';
+      const len = Math.min(uint8Array.length, 1024 * 50);
+      for (let i = 0; i < len; i++) {
+        binaryString += String.fromCharCode(uint8Array[i]);
+      }
+      
+      const detected = jschardet.detect(binaryString);
+      let encoding = detected.encoding || 'utf-8';
+      
+      const upper = encoding.toUpperCase();
+      if (['GB2312', 'GBK'].includes(upper)) {
+        encoding = 'GB18030';
+      } else if (upper === 'WINDOWS-1252' && detected.confidence < 0.95) {
+        encoding = 'GB18030';
+      } else if (upper === 'ISO-8859-1' && detected.confidence < 0.95) {
+        encoding = 'GB18030';
+      }
+      
+      let content = '';
+      try {
+        const decoder = new TextDecoder(encoding);
+        content = decoder.decode(uint8Array);
+      } catch (e) {
+        console.warn('Decoding failed, fallback to utf-8', e);
+        const decoder = new TextDecoder('utf-8');
+        content = decoder.decode(uint8Array);
       }
 
       const downloadedFile: DownloadedFile = {
