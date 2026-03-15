@@ -742,8 +742,8 @@ const Reader = () => {
       <div 
         ref={scrollRef}
         onClick={() => setShowControls(!showControls)}
-        className="min-h-[100dvh] w-full break-words overscroll-x-none touch-pan-y whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20"
-        style={{ fontSize: `${fontSize}px`, overflowAnchor: 'none' }}
+        className="min-h-[100dvh] w-full break-words overscroll-x-none touch-pan-y whitespace-pre-wrap leading-relaxed outline-none p-4 pb-32 pt-20 select-none"
+        style={{ fontSize: `${fontSize}px`, overflowAnchor: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
         tabIndex={-1}
       >
         {isLoading || isSwitching ? (
