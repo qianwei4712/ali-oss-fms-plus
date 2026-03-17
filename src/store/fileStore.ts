@@ -14,9 +14,12 @@ interface FileState {
   isSearching: boolean;
   nextMarker: string | null;
   hasMore: boolean;
+  searchNextToken: string | null;
+  hasMoreSearch: boolean;
   
   setCurrentPath: (path: string) => void;
   setSearchQuery: (query: string) => void;
+  fetchMoreSearchResults: () => Promise<void>;
   toggleSelection: (key: string) => void;
   clearSelection: () => void;
   
@@ -47,74 +50,167 @@ export const useFileStore = create<FileState>((set, get) => ({
   isSearching: false,
   nextMarker: null,
   hasMore: false,
+  searchNextToken: null,
+  hasMoreSearch: false,
 
   toggleSelectionMode: () => set((state) => ({ isSelectionMode: !state.isSelectionMode, selectedFiles: [] })),
   setSelectionMode: (mode) => set({ isSelectionMode: mode, selectedFiles: [] }),
   selectAll: (keys) => set({ selectedFiles: keys }),
 
   setCurrentPath: (path) => {
-    set({ currentPath: path, selectedFiles: [], isSelectionMode: false, searchQuery: '', searchResults: [], nextMarker: null, hasMore: false });
+    set({ 
+        currentPath: path, 
+        selectedFiles: [], 
+        isSelectionMode: false, 
+        searchQuery: '', 
+        searchResults: [], 
+        nextMarker: null, 
+        hasMore: false,
+        searchNextToken: null,
+        hasMoreSearch: false
+    });
     get().fetchFiles(true);
   },
 
   setSearchQuery: async (query) => {
     set({ searchQuery: query });
     if (!query.trim()) {
-        set({ searchResults: [], isSearching: false });
+        set({ searchResults: [], isSearching: false, searchNextToken: null, hasMoreSearch: false });
         return;
     }
 
     const { ossConfig } = useConfigStore.getState();
     if (!ossConfig) return;
 
-    set({ isSearching: true, error: null });
+    set({ isSearching: true, error: null, searchResults: [], searchNextToken: null, hasMoreSearch: false });
     
-    // Global search implementation
-    // Since OSS doesn't support recursive search efficiently, we have to list recursively.
-    // However, listing everything might be too heavy.
-    // We will use prefix listing with delimiter='' to list all objects recursively under rootPath.
-    // And then filter locally.
-    // Limit to max 1000 items for performance?
+    try {
+        const client = initOSSClient(ossConfig);
+        const rootPath = ossConfig.rootPath || '';
+        
+        let marker = null;
+        let isTruncated = true;
+        const matches: OSSObject[] = [];
+        const lowerQuery = query.toLowerCase();
+        
+        // Scan up to 5000 items per search action to prevent infinite loops on huge buckets
+        let itemsScanned = 0;
+        const maxItemsToScan = 5000;
+
+        while (isTruncated && itemsScanned < maxItemsToScan) {
+            const result = await client.list({
+                prefix: rootPath,
+                marker: marker || undefined,
+                'max-keys': 1000
+            }, {});
+
+            if (result.objects) {
+                for (const obj of result.objects) {
+                    itemsScanned++;
+                    if (obj.name === rootPath) continue;
+
+                    const relativePath = obj.name.startsWith(rootPath) 
+                        ? obj.name.slice(rootPath.length) 
+                        : obj.name;
+                    
+                    const fileName = relativePath.split('/').pop() || '';
+                    const isDir = obj.name.endsWith('/');
+                    
+                    if (fileName.toLowerCase().includes(lowerQuery)) {
+                        matches.push({
+                            name: relativePath,
+                            url: obj.url,
+                            lastModified: obj.lastModified,
+                            size: obj.size,
+                            type: isDir ? 'folder' : 'file'
+                        });
+                    }
+                }
+            }
+
+            isTruncated = result.isTruncated;
+            marker = result.nextMarker;
+        }
+        
+        set({ 
+            searchResults: matches, 
+            isSearching: false,
+            searchNextToken: isTruncated ? marker : null,
+            hasMoreSearch: isTruncated
+        });
+    } catch (err: any) {
+        console.error("Search failed", err);
+        set({ isSearching: false, error: "Search failed: " + err.message });
+    }
+  },
+
+  fetchMoreSearchResults: async () => {
+    const { ossConfig } = useConfigStore.getState();
+    const { searchQuery, searchNextToken, hasMoreSearch, isSearching, searchResults } = get();
+
+    if (!ossConfig || !hasMoreSearch || isSearching || !searchNextToken) return;
+
+    set({ isSearching: true, error: null });
 
     try {
         const client = initOSSClient(ossConfig);
         const rootPath = ossConfig.rootPath || '';
         
-        const result = await client.list({
-            prefix: rootPath,
-            // delimiter: '', // Empty delimiter means recursive list
-            ['max-keys']: 1000, // Increased limit as requested, though "unlimited" is hard in one go without pagination loop
-        }, {});
-
-        const matches: OSSObject[] = [];
+        let marker = searchNextToken;
+        let isTruncated = true;
+        const newMatches: OSSObject[] = [];
+        const lowerQuery = searchQuery.toLowerCase();
         
-        if (result.objects) {
-            result.objects.forEach(obj => {
-                // Skip root folder itself
-                if (obj.name === rootPath) return;
+        let itemsScanned = 0;
+        const maxItemsToScan = 5000;
 
-                // Simple case-insensitive name match
-                // We want to match the filename part or full path? User asked for "search all".
-                // Usually matching filename is more expected.
-                const relativePath = obj.name.replace(rootPath, '');
-                const fileName = relativePath.split('/').pop() || '';
-                
-                if (fileName.toLowerCase().includes(query.toLowerCase())) {
-                    matches.push({
-                        name: relativePath, // Keep relative path for display context
-                        url: obj.url,
-                        lastModified: obj.lastModified,
-                        size: obj.size,
-                        type: 'file'
-                    });
+        while (isTruncated && itemsScanned < maxItemsToScan) {
+            const result = await client.list({
+                prefix: rootPath,
+                marker: marker || undefined,
+                'max-keys': 1000
+            }, {});
+
+            if (result.objects) {
+                for (const obj of result.objects) {
+                    itemsScanned++;
+                    if (obj.name === rootPath) continue;
+
+                    const relativePath = obj.name.startsWith(rootPath) 
+                        ? obj.name.slice(rootPath.length) 
+                        : obj.name;
+                    
+                    const fileName = relativePath.split('/').pop() || '';
+                    const isDir = obj.name.endsWith('/');
+                    
+                    if (fileName.toLowerCase().includes(lowerQuery)) {
+                        const exists = searchResults.some(r => r.name === relativePath);
+                        if (!exists) {
+                            newMatches.push({
+                                name: relativePath,
+                                url: obj.url,
+                                lastModified: obj.lastModified,
+                                size: obj.size,
+                                type: isDir ? 'folder' : 'file'
+                            });
+                        }
+                    }
                 }
-            });
+            }
+
+            isTruncated = result.isTruncated;
+            marker = result.nextMarker;
         }
         
-        set({ searchResults: matches, isSearching: false });
+        set({ 
+            searchResults: [...searchResults, ...newMatches], 
+            isSearching: false,
+            searchNextToken: isTruncated ? marker : null,
+            hasMoreSearch: isTruncated
+        });
     } catch (err: any) {
-        console.error("Search failed", err);
-        set({ isSearching: false, error: "Search failed: " + err.message });
+        console.error("Load more search failed", err);
+        set({ isSearching: false, error: err.message });
     }
   },
 
@@ -131,7 +227,7 @@ export const useFileStore = create<FileState>((set, get) => ({
 
   fetchFiles: async (refresh = false) => {
     const { ossConfig } = useConfigStore.getState();
-    let { currentPath } = get();
+    const { currentPath } = get();
     
     if (!ossConfig) {
       set({ error: 'OSS configuration missing' });
@@ -231,9 +327,17 @@ export const useFileStore = create<FileState>((set, get) => ({
   },
 
   loadMore: async () => {
-      const { hasMore, isLoading } = get();
-      if (hasMore && !isLoading) {
-          await get().fetchFiles(false);
+      const { hasMore, isLoading, isSearching, hasMoreSearch } = get();
+      if (isLoading) return;
+
+      if (isSearching) {
+          if (hasMoreSearch) {
+              await get().fetchMoreSearchResults();
+          }
+      } else {
+          if (hasMore) {
+              await get().fetchFiles(false);
+          }
       }
   },
 

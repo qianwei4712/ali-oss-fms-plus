@@ -166,6 +166,7 @@ const FileManager = () => {
     searchResults,
     isSearching,
     hasMore,
+    hasMoreSearch,
     loadMore,
     uploadFiles,
     isSelectionMode,
@@ -194,12 +195,15 @@ const FileManager = () => {
   const [searchInputValue, setSearchInputValue] = useState('');
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
+
+  const canLoadMore = searchQuery ? hasMoreSearch : hasMore;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !error) {
+        if (entries[0].isIntersecting && canLoadMore && !isLoading && !isSearching && !error) {
           loadMore();
         }
       },
@@ -217,7 +221,7 @@ const FileManager = () => {
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, isLoading, loadMore, error]);
+  }, [canLoadMore, isLoading, isSearching, loadMore, error]);
 
   // Sync searchInputValue with store searchQuery when searchQuery is cleared externally
   useEffect(() => {
@@ -605,12 +609,12 @@ const FileManager = () => {
           </SwipeableList>
         )}
         
-        {hasMore && !isSearching && !searchQuery && (
+        {canLoadMore && (
             <div 
                 ref={observerTarget} 
                 className="h-20 flex justify-center items-center w-full cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => {
-                    if (!isLoading) loadMore();
+                    if (!isLoading && !isSearching) loadMore();
                 }}
             >
                 {error ? (
@@ -618,7 +622,7 @@ const FileManager = () => {
                         <span className="text-xs text-destructive">{error}</span>
                         <span className="text-xs text-muted-foreground underline">Tap to retry</span>
                     </div>
-                ) : isLoading ? (
+                ) : (isLoading || isSearching) ? (
                     <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                 ) : (
                     <span className="text-sm text-muted-foreground/50">Load More</span>
@@ -654,7 +658,29 @@ const FileManager = () => {
       <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
         <DrawerContent>
           <DrawerHeader className="text-left">
-            <DrawerTitle className="whitespace-normal break-all">{selectedFile?.name.split('/').pop()}</DrawerTitle>
+            <DrawerTitle 
+              className="whitespace-normal break-all cursor-pointer select-none"
+              style={{ touchAction: 'none' }}
+              onContextMenu={(e) => e.preventDefault()}
+              onPointerDown={() => {
+                longPressTimer.current = setTimeout(() => {
+                  const rawName = selectedFile?.name.split('/').pop() || '';
+                  const nameWithoutExt = rawName.replace(/\.txt$/i, '');
+                  if (nameWithoutExt) {
+                    navigator.clipboard.writeText(nameWithoutExt);
+                    setSearchInputValue(nameWithoutExt);
+                    setSearchQuery(nameWithoutExt);
+                    setMenuOpen(false);
+                    toast.success('已复制并填入搜索框');
+                  }
+                }, 500);
+              }}
+              onPointerUp={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+              onPointerLeave={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+              onPointerCancel={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+            >
+              {selectedFile?.name.split('/').pop()?.replace(/\.txt$/i, '')}
+            </DrawerTitle>
           </DrawerHeader>
           <div className="p-4 grid grid-cols-2 gap-3">
             <Button 
