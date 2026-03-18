@@ -670,7 +670,6 @@ const FileManager = () => {
                     navigator.clipboard.writeText(nameWithoutExt);
                     setSearchInputValue(nameWithoutExt);
                     setMenuOpen(false);
-                    toast.success('已复制并填入搜索框');
                   }
                 }, 500);
               }}

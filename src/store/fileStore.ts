@@ -95,7 +95,7 @@ export const useFileStore = create<FileState>((set, get) => ({
         
         // Scan up to 5000 items per search action to prevent infinite loops on huge buckets
         let itemsScanned = 0;
-        const maxItemsToScan = 5000;
+        const maxItemsToScan = 50000;
 
         while (isTruncated && itemsScanned < maxItemsToScan) {
             const result = await client.list({
