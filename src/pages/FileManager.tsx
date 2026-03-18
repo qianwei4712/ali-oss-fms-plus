@@ -342,7 +342,7 @@ const FileManager = () => {
 
       const downloadedFile: DownloadedFile = {
         key,
-        name: fileName,
+        name: fileName.split('/').pop() || fileName,
         content,
         encoding: 'UTF-8', 
         downloadTime: new Date().toISOString(),
