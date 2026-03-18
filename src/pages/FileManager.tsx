@@ -669,7 +669,6 @@ const FileManager = () => {
                   if (nameWithoutExt) {
                     navigator.clipboard.writeText(nameWithoutExt);
                     setSearchInputValue(nameWithoutExt);
-                    setSearchQuery(nameWithoutExt);
                     setMenuOpen(false);
                     toast.success('已复制并填入搜索框');
                   }
