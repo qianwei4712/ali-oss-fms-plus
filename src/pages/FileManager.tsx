@@ -508,7 +508,11 @@ const FileManager = () => {
               ? (currentPath.endsWith('/') ? currentPath.slice(0, -1) : currentPath).split('/').pop() 
               : 'Home'}
           </h1>
-          <Button variant="ghost" size="icon" onClick={() => fetchFiles(true)} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
+          <Button variant="ghost" size="icon" onClick={() => {
+            setSearchInputValue('');
+            setSearchQuery('');
+            fetchFiles(true);
+          }} className="h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors">
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
           <Button variant="ghost" size="icon" onClick={toggleSelectionMode} className={`h-9 w-9 hover:bg-primary/20 hover:text-primary rounded-xl transition-colors ${isSelectionMode ? 'bg-primary/20 text-primary' : ''}`}>
