@@ -16,9 +16,11 @@ interface FileState {
   hasMore: boolean;
   searchNextToken: string | null;
   hasMoreSearch: boolean;
+  searchInputValue: string;
   
   setCurrentPath: (path: string) => void;
   setSearchQuery: (query: string) => void;
+  setSearchInputValue: (value: string) => void;
   fetchMoreSearchResults: () => Promise<void>;
   toggleSelection: (key: string) => void;
   clearSelection: () => void;
@@ -52,6 +54,9 @@ export const useFileStore = create<FileState>((set, get) => ({
   hasMore: false,
   searchNextToken: null,
   hasMoreSearch: false,
+  searchInputValue: '',
+
+  setSearchInputValue: (value) => set({ searchInputValue: value }),
 
   toggleSelectionMode: () => set((state) => ({ isSelectionMode: !state.isSelectionMode, selectedFiles: [] })),
   setSelectionMode: (mode) => set({ isSelectionMode: mode, selectedFiles: [] }),

@@ -31,7 +31,8 @@ const Reader = () => {
   const isOffline = searchParams.get('offline') === 'true';
   const navigate = useNavigate();
   const { ossConfig, theme, setTheme } = useConfigStore();
-  const { deleteFiles, moveFile, renameFile } = useFileStore();
+  const { deleteFiles, moveFile, renameFile, setSearchInputValue } = useFileStore();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const [content, setContent] = useState('');
   const [rawBuffer, setRawBuffer] = useState<ArrayBuffer | null>(null);
@@ -679,7 +680,28 @@ const Reader = () => {
             </DrawerTrigger>
             <DrawerContent className={cn("text-foreground pb-6 glass-panel border-t border-white/10", theme)}>
                 <DrawerHeader className="text-left">
-                    <DrawerTitle>File Actions</DrawerTitle>
+                    <DrawerTitle
+                        className="whitespace-normal break-all cursor-pointer select-none"
+                        style={{ touchAction: 'none' }}
+                        onContextMenu={(e) => e.preventDefault()}
+                        onPointerDown={() => {
+                            longPressTimer.current = setTimeout(() => {
+                                const rawName = path ? decodeURIComponent(path).split('/').pop() || '' : '';
+                                const nameWithoutExt = rawName.replace(/\.txt$/i, '');
+                                if (nameWithoutExt) {
+                                    navigator.clipboard.writeText(nameWithoutExt);
+                                    setSearchInputValue(nameWithoutExt);
+                                    setIsActionsOpen(false);
+                                    navigate('/'); // Navigate to file manager
+                                }
+                            }, 500);
+                        }}
+                        onPointerUp={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+                        onPointerLeave={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+                        onPointerCancel={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+                    >
+                        {path ? decodeURIComponent(path).split('/').pop()?.replace(/\.txt$/i, '') : 'File Actions'}
+                    </DrawerTitle>
                 </DrawerHeader>
                 <div className="p-4 grid grid-cols-2 gap-3">
                     <Button 

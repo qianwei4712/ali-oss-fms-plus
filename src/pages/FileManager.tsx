@@ -174,7 +174,9 @@ const FileManager = () => {
     selectedFiles,
     toggleSelection,
     selectAll,
-    moveFiles
+    moveFiles,
+    searchInputValue,
+    setSearchInputValue
   } = useFileStore();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -192,7 +194,7 @@ const FileManager = () => {
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [searchInputValue, setSearchInputValue] = useState('');
+
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -223,12 +225,7 @@ const FileManager = () => {
     };
   }, [canLoadMore, isLoading, isSearching, loadMore, error]);
 
-  // Sync searchInputValue with store searchQuery when searchQuery is cleared externally
-  useEffect(() => {
-    if (!searchQuery) {
-        setSearchInputValue('');
-    }
-  }, [searchQuery]);
+
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
