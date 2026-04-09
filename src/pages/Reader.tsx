@@ -97,8 +97,6 @@ const Reader = () => {
   const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showControls, setShowControls] = useState(false);
-  const lastScrollTopRef = useRef(0);
-  const isUserInteractingRef = useRef(false);
 
   const handleScroll = useCallback(() => {
     const scrollTop = window.scrollY;
@@ -124,9 +122,6 @@ const Reader = () => {
   const handleProgressChange = useCallback((value: number[]) => {
     const newProgress = value[0];
     
-    // Set lock for controls visibility only
-    isUserInteractingRef.current = true;
-    
     // Update local state
     setScrollProgress(newProgress);
     
@@ -139,7 +134,6 @@ const Reader = () => {
         top: targetScrollTop,
         behavior: 'auto' // Instant jump to prevent fighting with slider
     });
-    lastScrollTopRef.current = targetScrollTop;
   }, []);
 
   // Auto-scroll to active chapter in TOC
@@ -794,12 +788,6 @@ const Reader = () => {
                 max={100}
                 step={0.1}
                 onValueChange={handleProgressChange}
-                onValueCommit={() => {
-                    // Keep lock active slightly longer to handle inertia
-                    setTimeout(() => {
-                        isUserInteractingRef.current = false;
-                    }, 200);
-                }}
                 className="flex-1 cursor-pointer py-4"
             />
         </div>
