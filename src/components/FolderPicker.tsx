@@ -34,7 +34,7 @@ export const FolderPicker = ({
               prefix: dirPath,
               delimiter: '/',
               'max-keys': 1000,
-              marker: nextMarker,
+              marker: nextMarker ?? undefined,
             }, {});
 
             if (result.prefixes) {

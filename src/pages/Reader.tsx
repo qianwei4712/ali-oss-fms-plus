@@ -104,28 +104,6 @@ const Reader = () => {
     const scrollTop = window.scrollY;
     const scrollHeight = document.documentElement.scrollHeight;
     const clientHeight = window.innerHeight;
-    
-    // Always update control visibility logic
-    const currentScrollTop = scrollTop;
-    const lastScrollTop = lastScrollTopRef.current;
-    const scrollDelta = currentScrollTop - lastScrollTop;
-
-    // Ignore bounce/rubber-banding at edges (especially on iOS)
-    if (currentScrollTop < 0 || currentScrollTop > (scrollHeight - clientHeight)) {
-        return;
-    }
-
-    // Only toggle controls if NOT interacting with slider
-    if (Math.abs(scrollDelta) > 10 && !isUserInteractingRef.current) {
-        if (scrollDelta > 0) {
-            setShowControls(false);
-        } else if (scrollDelta < 0) {
-            setShowControls(true);
-        }
-        lastScrollTopRef.current = currentScrollTop;
-    } else if (isUserInteractingRef.current) {
-        lastScrollTopRef.current = currentScrollTop;
-    }
 
     // Calculate progress - ALWAYS update state to match reality
     if (scrollHeight > clientHeight) {
@@ -267,8 +245,6 @@ const Reader = () => {
       setIsLoading(true);
 
       try {
-        let buffer: ArrayBuffer;
-
         if (isOffline) {
           const file = await downloadedTxtStore.getItem(key) as DownloadedFile | null;
           if (!file) throw new Error('File not found in downloads');
@@ -299,7 +275,7 @@ const Reader = () => {
           throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
         }
         
-        buffer = await response.arrayBuffer();
+        const buffer = await response.arrayBuffer();
         setRawBuffer(buffer);
         // Content decoding will be handled by the effect depending on rawBuffer and encoding state
       } catch (err: unknown) {
@@ -469,7 +445,7 @@ const Reader = () => {
     }
   }, [currentChapterIndex, isSwitching]);
 
-  const handleNextChapter = (e?: React.MouseEvent) => {
+  const handleNextChapter = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (e) {
         e.preventDefault();
         e.currentTarget.blur();
@@ -494,7 +470,7 @@ const Reader = () => {
     }
   };
 
-  const handlePrevChapter = (e?: React.MouseEvent) => {
+  const handlePrevChapter = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (e) {
         e.preventDefault();
         e.currentTarget.blur();
